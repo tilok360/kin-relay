@@ -1,0 +1,14 @@
+{
+  "name": "kin-relay-desktop-build",
+  "private": true,
+  "description": "Builds the Kin Relay Windows installer. Not shipped.",
+  "scripts": {
+    "stage": "node build.js stage",
+    "dist": "node build.js dist",
+    "start": "node build.js stage && electron ../.stage"
+  },
+  "devDependencies": {
+    "electron": "45.5.0",
+    "electron-builder": "26.18.0"
+  }
+}

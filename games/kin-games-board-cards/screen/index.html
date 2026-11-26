@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Kin Games: Board & Cards</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body data-view="lounge">
+<div class="glow g1" aria-hidden="true"></div><div class="glow g2" aria-hidden="true"></div>
+<header class="top">
+  <div class="brand"><span class="neon" aria-hidden="true">KG</span><div><h1>Kin Games</h1><p class="sub" id="appSub"></p></div></div>
+  <div class="sound"><button class="icon" id="mute" type="button" aria-label="Mute">🔊</button><input type="range" id="vol" min="0" max="100" value="70" aria-label="Volume"></div>
+</header>
+<main>
+<section id="lounge">
+  <div class="modes" role="group" aria-label="How to play">
+    <button class="modecard" id="modeSolo" type="button" aria-pressed="true"><span class="pill free">Free · no credits</span><b>Solo</b><small>Play the computer. Everything runs on this screen.</small></button>
+    <button class="modecard kin" id="modeKin" type="button" aria-pressed="false"><span class="pill paid">Uses Kindroid credits</span><b id="kinWho">Play your Kin</b><small>Your Kin picks its moves, talks, and remembers who won.</small></button>
+  </div>
+  <div class="opts">
+    <label>Difficulty <select id="level"><option value="beginner">Beginner</option><option value="easy">Easy</option><option value="normal">Normal</option><option value="hard">Hard</option></select></label>
+    <label id="kinOpts" hidden>Your Kin <select id="mode"><option value="kin">Chooses every move and talks</option><option value="talk">App moves, your Kin talks now and then</option><option value="quiet">App moves, quietly</option></select></label>
+  </div>
+  <p class="note" id="modeNote"></p>
+  <p class="note" id="kinbar"></p>
+  <p class="note" id="sister"></p>
+  <div class="finder">
+    <input type="search" id="search" placeholder="Search games  ( / )" aria-label="Search games">
+    <div class="chips" id="chips" role="toolbar" aria-label="Categories"></div>
+  </div>
+  <div id="shelves"></div>
+</section>
+
+<section id="play" hidden>
+  <div class="gbar">
+    <button class="btn alt" id="back" type="button" aria-label="Back to the lounge">← Lounge</button>
+    <div class="gname"><span class="minibox" id="gbox"></span><div><h2 id="gtitle"></h2><span class="badge" id="gmode"></span></div></div>
+    <div class="gtools">
+      <label class="lvl">Level <select id="level2"><option value="beginner">Beginner</option><option value="easy">Easy</option><option value="normal">Normal</option><option value="hard">Hard</option></select></label>
+      <button class="btn alt" id="rulesBtn" type="button">Rules &amp; awards</button>
+      <button class="btn" id="newgame" type="button">New game</button>
+    </div>
+  </div>
+  <p class="note" id="gnote"></p>
+  <div class="table" id="table">
+    <div class="say" id="say" aria-live="polite" hidden></div>
+    <div class="status" id="status" aria-live="polite"></div>
+    <div class="stage" id="stage" tabindex="-1"></div>
+    <div id="banner" class="banner" hidden><b></b><span></span><button class="btn" id="again" type="button">Play again</button></div>
+  </div>
+</section>
+</main>
+<div class="dlg" id="rulesDlg" hidden role="dialog" aria-modal="true" aria-labelledby="rulesH">
+  <div class="dlgcard"><h2 id="rulesH">Rules</h2><p id="rules"></p><h3>Achievements <small id="achsum"></small></h3><div class="achs" id="achs"></div><button class="btn" id="rulesClose" type="button">Close</button></div>
+</div>
+<div class="toast" id="toast" aria-live="polite"><div class="seal" id="sealicon">🏅</div><div><div class="t1" id="t1"></div><div class="t2" id="t2"></div><div class="t3" id="t3"></div></div></div>
+<script src="kit.js"></script>
+<script src="catalog.js"></script>
+<script src="core.js"></script>
+<script>KG.init();</script>
+</body>
+</html>

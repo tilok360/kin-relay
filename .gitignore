@@ -1,0 +1,19 @@
+# never commit keys or your own data
+key.json
+.kin_token
+*.result.json
+# build outputs (rebuild with: cd desktop && npm install && node build.js dist)
+desktop/node_modules/
+desktop/.stage/
+desktop/installer-out/
+desktop/.builder.json
+node_modules/
+runtime/
+# games added while testing
+games/.adding-*
+games/.old-*
+games/checkers/
+games/*/kinrelay-added.json
+
+# Kindroid sample app used by the tests (not ours to publish)
+samples/

@@ -1,0 +1,16 @@
+# Kin Relay on Cloudflare Workers (free plan). Deploy with:  npx wrangler deploy
+name = "kin-relay"
+main = "worker.js"
+compatibility_date = "2026-11-01"
+
+[[durable_objects.bindings]]
+name = "MAILBOX"
+class_name = "Mailbox"
+
+# SQLite-backed Durable Objects are the kind the free plan includes.
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Mailbox"]
+
+# Optional: only people with this code can use your relay. Set it as a secret instead of here:
+#   npx wrangler secret put RELAY_CODE

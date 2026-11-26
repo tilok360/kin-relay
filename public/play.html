@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="room-token" content="{{TOKEN}}">
+<meta name="screen-origin" content="{{SCREEN_ORIGIN}}">
+<title>Kin Relay</title>
+<link rel="icon" href="/art/logo.svg">
+<link rel="stylesheet" href="/room.css">
+</head>
+<body class="play">
+<div class="bar">
+  <a class="back" href="/">← Kin Relay</a>
+  <span class="title" id="title">Loading…</span>
+  <span class="pill hide-s" title="Games made for Kindroid label some modes as using credits. Here, runs are free; your Kin is asked through your own API key.">"Uses credits" labels don't apply here</span>
+  <div class="grow"></div>
+  <span class="pill thinking" id="thinking" aria-live="polite"><span class="dot warn"></span><span id="thinkTxt">Asking your Kin…</span></span>
+  <button class="kinbtn" id="kinBtn" aria-haspopup="dialog" aria-controls="kinPanel" aria-expanded="false" title="Which Kins play this game"><span class="avatar sm" id="kinBtnAv"></span><span id="kinBtnTxt">Kins</span></button>
+  <span class="pill hide-s" id="relayPill" hidden><span class="dot" id="relayDot"></span><span id="relayTxt">Relay</span></span>
+</div>
+<div class="stagewrap"><iframe id="screen" title="Game" sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups allow-downloads" allow="clipboard-write; autoplay; fullscreen"></iframe></div>
+<div class="kinpanel" id="kinPanel" role="dialog" aria-labelledby="kpH" hidden>
+  <h4 id="kpH">Kins in this game</h4>
+  <p class="hint">Tick the Kins this game can seat (games with more than one Kin seat use these). The one marked "Your Kin" plays with you.</p>
+  <div id="kpList"></div>
+  <div class="row"><a class="ghost btn" href="/#characters">Edit characters</a><div class="grow"></div><button class="ghost" id="kpCancel">Cancel</button><button class="primary" id="kpSave">Save</button></div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="/bridge.js"></script>
+</body>
+</html>

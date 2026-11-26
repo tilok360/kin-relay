@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kin Hold'em</title>
+<link rel="stylesheet" href="style.css">
+<body>
+<div id="sprite"></div>
+
+<!-- ===== menu ===== -->
+<main id="menu">
+  <div class="hero">
+    <svg class="logo" viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="22" fill="#0d4a2e" stroke="#e8c46a" stroke-width="2"/><circle cx="24" cy="24" r="17" fill="none" stroke="#e8c46a" stroke-width="1" stroke-dasharray="3 3"/><use href="#s-s" x="12" y="12" width="24" height="24" fill="#e8c46a"/></svg>
+    <h1>Kin Hold'em</h1>
+    <p>No-limit Texas Hold'em for play chips. Nothing to buy and no real money, ever.</p>
+  </div>
+  <div class="box">
+    <label>Your name at the table<input id="myname" maxlength="40" placeholder="Your name" autocomplete="off"></label>
+    <div class="tabs" role="tablist">
+      <button id="tSolo" class="on" role="tab">Solo<small>Free · no credits</small></button>
+      <button id="tHost" role="tab">Host<small>Uses credits</small></button>
+      <button id="tJoin" role="tab">Join<small>Uses credits</small></button>
+      <button id="tKins" role="tab">My Kins<small>Uses credits</small></button>
+    </div>
+
+    <section id="pSolo">
+      <p class="free">Free. Runs only on this screen: no Kin, no app runs, nothing sent. Play against computer players, each with its own style.</p>
+      <div class="opt"><span>Opponents</span><div class="seg" id="oN"></div></div>
+      <div class="opt"><span>Difficulty</span><div class="seg" id="oLvl"></div></div>
+      <div class="opt"><span>Starting chips</span><div class="seg" id="oChips"></div></div>
+      <div class="opt"><span>Blinds</span><div class="seg" id="oBlinds"></div></div>
+      <div id="oPreview" class="preview"></div>
+      <button id="doSolo" class="go">Sit down · play free</button>
+    </section>
+
+    <section id="pHost" hidden>
+      <p class="paid">Hosting runs this app on Kindroid to deal and carry moves between people, so it may use Kindroid credits (more while people are playing; it goes quiet 10 minutes after the last move or message). Computer players can fill empty seats for free; seating a Kin uses a Kin request per decision.</p>
+      <label>Table name<input id="tName" maxlength="60" placeholder="Friday night table"></label>
+      <button id="doHost" class="go">Open the table</button>
+    </section>
+
+    <section id="pJoin" hidden>
+      <p class="paid">Joining a table runs this app on Kindroid to send your moves and chat, so it may use Kindroid credits. It goes quiet 10 minutes after your last move.</p>
+      <label>Invite code from the host<textarea id="jCode" rows="3" placeholder="TABLE-…"></textarea></label>
+      <button id="doJoin" class="go">Ask to sit down</button>
+    </section>
+
+    <section id="pKins" hidden>
+      <p class="paid">Your Kins play against you at their own seats. Every Kin decision is a Kin request on your account and uses credits (junk hands are folded without asking, and an hourly limit keeps it in check).</p>
+      <div>Choose up to 10 Kins</div><div class="row kinpick" id="soloPick"></div>
+      <p class="note" id="soloNote"></p>
+      <button id="doKins" class="go">Start with my Kins</button>
+    </section>
+
+    <div id="bringBox" hidden><div class="lbl">Bring a Kin to the table (it plays its own seat; uses Kin requests)</div><div class="row kinpick" id="bring"></div></div>
+    <div class="bar" id="menuBar"><span class="dot" id="runDot0"></span><b id="runTxt0">Checking…</b><button id="startBtn0" hidden>Start</button><span id="menuQuit"></span></div>
+    <p class="note" id="note0"></p>
+  </div>
+</main>
+
+<!-- ===== table ===== -->
+<main id="game" hidden>
+  <header class="top">
+    <button id="back" class="ib" title="Leave this table" aria-label="Leave this table">←</button>
+    <div class="ttl"><b id="title"></b><span id="sub"></span></div>
+    <span class="bar slim" id="onlineBar" hidden><span class="dot" id="runDot"></span><b id="runTxt"></b><button id="startBtn" hidden>Start</button></span>
+    <button id="bHint" class="ib" title="Hand-strength hint (H)" aria-pressed="false">Hint</button>
+    <button id="bSnd" class="ib" title="Sound (M)" aria-pressed="true">♪</button>
+    <button id="bChat" class="ib" title="Chat, log, awards (T)">Chat<i id="unread" hidden></i></button>
+    <button id="gear" class="ib" title="Table settings" aria-label="Table settings">⚙</button>
+  </header>
+  <section id="stage" aria-label="Poker table">
+    <div class="rail"><div class="felt"><div class="mark"><b>KIN HOLD'EM</b><span>play chips only</span></div></div></div>
+    <div class="deck" id="deck"><div class="card"><div class="in"><div class="bk"></div></div></div></div>
+    <div id="pot" class="pot"></div>
+    <div id="board" class="board"></div>
+    <div id="banner" class="banner" aria-live="polite"></div>
+    <div id="seats"></div>
+    <div id="fly"></div>
+  </section>
+  <section id="dock">
+    <div id="status" class="status" aria-live="polite"></div>
+    <div id="hint" class="hint" hidden></div>
+    <div id="acts" class="acts" hidden>
+      <div class="row3">
+        <button id="aFold" class="fold">Fold<kbd>F</kbd></button>
+        <button id="aCall" class="call">Check<kbd>C</kbd></button>
+        <button id="aRaise" class="raise">Raise<kbd>R</kbd></button>
+      </div>
+      <div id="raiseBox" class="raisebox">
+        <input type="range" id="rSlide" aria-label="Raise to">
+        <input type="number" id="rNum" aria-label="Raise to amount">
+        <div class="presets"><button data-p="min">Min</button><button data-p=".5">½ pot</button><button data-p=".75">¾ pot</button><button data-p="1">Pot</button><button data-p="all" class="allin">All-in<kbd>A</kbd></button></div>
+      </div>
+    </div>
+    <div id="between" class="between" hidden>
+      <button id="dealBtn" class="go">Deal next hand<kbd>N</kbd></button>
+      <span id="dealWhy" class="note"></span>
+    </div>
+    <div id="extra" class="row"></div>
+  </section>
+</main>
+
+<aside id="panel" class="side" hidden>
+  <div class="row"><b class="grow">Table</b><button class="ib" id="closePanel" aria-label="Close">✕</button></div>
+  <div class="tabs" id="ptabs"><button data-t="chat" class="on">Chat</button><button data-t="ooc" title="Out of character: only people see this, never a Kin">OOC</button><button data-t="log">Log</button><button data-t="ach">Awards</button></div>
+  <div id="pBody" class="pbody"></div>
+  <div class="row" id="sayRow"><input id="say" class="grow" maxlength="500" placeholder="Say something to the table"><button id="send" class="go sm">Send</button></div>
+</aside>
+
+<aside id="drawer" class="side" hidden>
+  <div class="row"><b class="grow" style="font-size:18px">Settings</b><button class="ib" id="closeDrawer" aria-label="Close">✕</button></div>
+  <h2>This screen</h2>
+  <label class="chk"><input type="checkbox" id="sSound"> Sound effects</label>
+  <label class="chk"><input type="checkbox" id="sMotion"> Animations (off follows your device's reduced-motion setting)</label>
+  <label class="chk"><input type="checkbox" id="sHint"> Hand-strength hint (your made hand and rough winning odds)</label>
+  <p class="note">Keys: F fold · C check/call · R raise (Enter confirms) · A all-in · N next hand · H hint · M sound · T chat.</p>
+  <div id="onlineTools">
+    <div id="hostTools">
+      <h2>Invite code</h2><div class="code" id="invite"></div><button id="copyInvite">Copy invite code</button>
+      <p class="note">Share it only with people you want at the table (up to five people including you). You admit each one.</p>
+      <h2>Waiting to sit down</h2><div id="waiting" class="note"></div>
+      <h2>Computer players</h2>
+      <div class="opt"><span>Seats filled by computer players (free)</span><div class="seg" id="bN"></div></div>
+      <div class="opt"><span>Their level</span><div class="seg" id="bLvl"></div></div>
+      <h2>Game</h2>
+      <div class="row"><label class="grow">Small blind<input id="sSb" type="number" min="1"></label><label class="grow">Big blind<input id="sBb" type="number" min="2"></label></div>
+      <div class="row"><label class="grow">Starting chips<input id="sStart" type="number" min="100"></label><label class="grow">Seconds per move<input id="sTimer" type="number" min="20" max="600"></label></div>
+      <label class="chk"><input type="checkbox" id="sAuto"> Deal the next hand automatically</label>
+      <label class="chk"><input type="checkbox" id="sRebuy"> Allow rebuys when a seat runs out</label>
+      <button id="saveS" class="go sm">Save game settings</button>
+      <button id="pauseBtn">Pause after this hand</button>
+      <h2>People</h2><div id="people"></div>
+    </div>
+    <div id="memberInfo" class="note"></div>
+    <h2>Your Kin</h2><div id="kinPick" class="row kinpick"></div>
+    <div id="soloKinBox" hidden><div class="note">Your Kins at the table (up to 10)</div><div class="row kinpick" id="soloPick2"></div></div>
+    <div id="kinBox" class="row"></div>
+    <h2>Credits</h2><p class="note" id="creditNote"></p>
+  </div>
+  <button id="leave" class="danger">Leave the table</button>
+</aside>
+<div class="toast" id="toast" aria-live="polite"><div class="seal" id="sealicon">🏅</div><div><div class="t1" id="t1"></div><div class="t2" id="t2"></div><div class="t3" id="t3"></div></div></div>
+
+<script src="poker.js"></script>
+<script src="bots.js"></script>
+<script src="art.js"></script>
+<script src="sound.js"></script>
+<script src="solo.js"></script>
+<script src="app.js"></script>
+<script>
+window.KQ = {
+  name: "Kin Hold'em",
+  after: ["#gear", "#menuQuit"],
+  ask: () => { const m = App.mode();
+    if (m === "host") return { title: "Close the table and quit?", text: "Everyone seated is told the table closed, the game stops, and this app stops checking in. Nothing runs until you open a new table.", go: "Close the table" };
+    if (m === "member") return { title: "Leave the table and quit?", text: "Your seat and your Kin's seat are given up. This app stops checking in with the table.", go: "Leave the table" };
+    return { text: "Nothing is running except this screen. Quitting closes it. A Solo game in progress is lost." }; },
+  before: () => App.leaveForQuit(),
+  closedText: "You're away from the table and nothing is running. You can close this panel now."
+};
+</script>
+<!-- kin-quit: a Quit button that stops this app and closes its screen -->
+<style>
+button.kq-btn.kq-btn{position:fixed;top:10px;right:10px;z-index:2147483000;min-height:34px;padding:4px 14px;border-radius:999px;border:1px solid #f18c9a99;background:#1b1a22e6;color:#f7b8c0;font:600 13px/1 system-ui,-apple-system,"Segoe UI",sans-serif;cursor:pointer;box-shadow:0 2px 10px #0006}
+button.kq-btn.kq-btn:hover{border-color:#f18c9a}
+button.kq-btn.kq-btn.kq-inline{position:static;z-index:auto;min-height:30px;box-shadow:none;margin-left:auto;flex:none}
+#kq-layer{position:fixed;inset:0;z-index:2147483001;display:grid;place-items:center;padding:16px;background:#0c0b11f5;color:#f3f2f7;font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+#kq-layer[hidden]{display:none}
+#kq-box{width:100%;max-width:430px;text-align:center}
+#kq-box h2{margin:0 0 8px;font-size:22px;line-height:1.2}
+#kq-box p{color:#bdbacb;margin:0 0 18px}
+#kq-box .kq-row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+#kq-box button{min-height:46px;padding:8px 18px;border-radius:12px;font:600 15px system-ui,-apple-system,"Segoe UI",sans-serif;cursor:pointer}
+#kq-box .kq-go{background:#a5394b;border:1px solid #f18c9a;color:#fff}
+#kq-box .kq-no{background:transparent;border:1px solid #5c5a68;color:#eceaf3}
+</style>
+<div id="kq-layer" role="dialog" aria-modal="true" aria-labelledby="kq-title" hidden><div id="kq-box"></div></div>
+<script>
+/* Quit: asks first, lets the app finish its own stop step (window.KQ.before), then stops every
+   timer, ignores any late answer from Kindroid and covers the screen. "Open again" reloads the screen. */
+(() => {
+  const C = window.KQ || {};
+  const NAME = C.name || document.title || "this app";
+  const L = document.getElementById("kq-layer"), B = document.getElementById("kq-box"), Q = [];
+  // window.KQ.after: elements to place a Quit button right after (e.g. each view's status bar); otherwise one floats top right.
+  const quitButton = (inline) => { const b = document.createElement("button"); b.type = "button"; b.className = "kq-btn" + (inline ? " kq-inline" : ""); b.textContent = "Quit"; b.setAttribute("aria-haspopup", "dialog"); b.onclick = ask; Q.push(b); return b; };
+  for (const sel of C.after || []) { const t = document.querySelector(sel); if (t) t.after(quitButton(true)); }
+  if (!Q.length) document.body.appendChild(quitButton(false));
+  let quit = false, closing = false;
+  window.addEventListener("message", (e) => { if (quit) e.stopImmediatePropagation(); }, true);
+  const mk = (text, cls, fn) => { const b = document.createElement("button"); b.type = "button"; b.className = cls; b.textContent = text; b.onclick = fn; return b; };
+  function show(title, text, buttons) {
+    B.replaceChildren();
+    const h = document.createElement("h2"); h.id = "kq-title"; h.textContent = title;
+    const p = document.createElement("p"); p.textContent = text;
+    const row = document.createElement("div"); row.className = "kq-row"; row.append(...buttons);
+    B.append(h, p, row); L.hidden = false;
+    if (buttons[0]) buttons[0].focus();
+  }
+  function ask() {
+    const a = typeof C.ask === "function" ? C.ask() : {};
+    show(a.title || "Quit " + NAME + "?",
+      a.text || "This stops anything in progress and closes the app. Nothing runs until you open it again. Copy anything you want to keep first.",
+      [mk(a.go || "Quit", "kq-go", doQuit), mk("Keep going", "kq-no", () => { L.hidden = true; })]);
+  }
+  async function doQuit() {
+    if (closing) return; closing = true;
+    show("Closing " + NAME + "…", C.closingText || "Stopping what it was doing.", []);
+    if (typeof C.before === "function") {
+      try { await Promise.race([Promise.resolve(C.before()), new Promise((r) => setTimeout(r, C.waitMs || 45000))]); } catch (e) {}
+    }
+    quit = true;
+    let id = setTimeout(() => {}, 0);
+    while (id > 0) { clearTimeout(id); clearInterval(id); id--; }
+    for (const n of document.body.children) if (n !== L && n.tagName !== "SCRIPT" && n.tagName !== "STYLE") n.style.display = "none";
+    show(NAME + " is closed", C.closedText || "Nothing is running. You can close this panel now.", [mk("Open again", "kq-no", () => location.reload())]);
+  }
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !L.hidden && !closing) L.hidden = true; });
+})();
+</script>
+<!-- /kin-quit -->

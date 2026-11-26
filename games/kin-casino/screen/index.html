@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kin Casino</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="style.css">
+<body>
+<div id="sprite"></div>
+
+<!-- ===== the casino floor ===== -->
+<main id="lounge">
+  <header class="hero">
+    <svg class="logo" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="#5c0f22" stroke="#e8c46a" stroke-width="2.5"/><circle cx="32" cy="32" r="23" fill="none" stroke="#e8c46a" stroke-width="5" stroke-dasharray="6 6"/><circle cx="32" cy="32" r="15" fill="#0d4a2e" stroke="#e8c46a"/><text x="32" y="39" text-anchor="middle" font-family="Georgia,serif" font-weight="700" font-size="19" fill="#e8c46a">K</text></svg>
+    <div><h1>Kin Casino</h1><p>Thirteen casino games for play chips. Nothing to buy and no real money, ever.</p></div>
+    <div class="bank" title="Your play-chip bank, shared by every game"><span class="chipdot"></span><b id="bank0">1,000</b><button id="refill0" hidden>Free refill</button></div>
+  </header>
+  <div class="box">
+    <div class="row"><label class="grow">Your name<input id="myname" maxlength="40" placeholder="Player" autocomplete="off"></label></div>
+    <div class="tabs" role="tablist">
+      <button id="tSolo" class="on" role="tab">Solo<small>Free · no credits</small></button>
+      <button id="tKin" role="tab">With my Kin<small>Uses credits</small></button>
+      <button id="tHost" role="tab">Host a table<small>Uses credits</small></button>
+      <button id="tJoin" role="tab">Join<small>Uses credits</small></button>
+    </div>
+    <section id="pSolo"><p class="free">Free. Everything runs on this screen against the house: no Kin, no app runs, nothing sent.</p>
+      <div class="opt"><span>Computer players at your table</span><div class="seg" id="oBots"></div></div></section>
+    <section id="pKin" hidden><p class="paid">Your Kin sits at the table and plays its own chips. It is asked once when it sits down (its style, lucky number and hello) and again only when you tap Talk. Each ask is a Kin request and uses Kindroid credits; its bets and moves after that are free.</p>
+      <div class="lbl">Which Kin</div><div class="row kinpick" id="soloKin"></div></section>
+    <section id="pHost" hidden><p class="paid">Hosting runs this app on Kindroid to deal and carry bets between people, so it may use Kindroid credits (more while people play; it goes quiet 10 minutes after the last bet or message). Computer players are free. A Kin is asked when it sits down and when someone asks it to talk.</p>
+      <label>Table name<input id="tName" maxlength="60" placeholder="Friday night table"></label>
+      <div class="lbl">Bring one Kin (optional)</div><div class="row kinpick" id="bringH"></div>
+      <p class="note">Pick a game on the floor below to open your table.</p></section>
+    <section id="pJoin" hidden><p class="paid">Joining runs this app on Kindroid to send your bets and chat, so it may use Kindroid credits. It goes quiet 10 minutes after your last bet.</p>
+      <label>Invite code from the host<textarea id="jCode" rows="2" placeholder="TABLE-…"></textarea></label>
+      <div class="lbl">Bring one Kin (optional)</div><div class="row kinpick" id="bringJ"></div>
+      <button id="doJoin" class="go">Ask to sit down</button></section>
+    <div class="bar" id="menuBar" hidden><span class="dot" id="runDot0"></span><b id="runTxt0">Checking…</b><button id="startBtn0" hidden>Start</button></div>
+    <p class="note" id="note0" aria-live="polite"></p>
+    <span id="menuQuit"></span>
+  </div>
+  <section id="floor" aria-label="Games"></section>
+  <p class="fine">Play chips have no value and can't be bought, sold or cashed out. Games use real casino rules and payouts so the odds are honest: over time the house edge wins.</p>
+</main>
+
+<!-- ===== a table ===== -->
+<main id="game" hidden>
+  <header class="top">
+    <button id="back" class="ib" title="Back to the floor (Esc)" aria-label="Back to the floor">←</button>
+    <div class="ttl"><b id="title"></b><span id="sub"></span></div>
+    <span class="bar slim" id="onlineBar" hidden><span class="dot" id="runDot"></span><b id="runTxt"></b><button id="startBtn" hidden>Start</button></span>
+    <div class="bank"><span class="chipdot"></span><b id="bank"></b><button id="refill" hidden>Free refill</button></div>
+    <button id="bSnd" class="ib" title="Sound (M)" aria-pressed="true">♪</button>
+    <button id="bChat" class="ib" title="Chat (T)">Chat<i id="unread" hidden></i></button>
+    <button id="gear" class="ib" title="Rules and settings" aria-label="Rules and settings">⚙</button>
+  </header>
+  <section id="stage" aria-label="Table"><div id="show"></div><div id="banner" class="banner" aria-live="polite"></div></section>
+  <div id="seats" aria-label="Players"></div>
+  <section id="board" aria-label="Bets"></section>
+  <section id="dock">
+    <div id="status" class="status" aria-live="polite"></div>
+    <div class="row" id="chips" aria-label="Chip value"></div>
+    <div class="row" id="acts"></div>
+  </section>
+</main>
+
+<aside id="panel" class="side" hidden>
+  <div class="row"><b class="grow">Table chat</b><button class="ib" id="closePanel" aria-label="Close">✕</button></div>
+  <div id="drafts"></div>
+  <div id="pBody" class="pbody"></div>
+  <div class="row"><button id="talk" class="sm">Ask my Kin to talk</button><span class="note" id="kinUse"></span></div>
+  <div class="row" id="sayRow"><input id="say" class="grow" maxlength="500" placeholder="Say something to the table"><button id="send" class="go sm">Send</button></div>
+</aside>
+
+<aside id="drawer" class="side" hidden>
+  <div class="row"><b class="grow" style="font-size:18px">Rules and settings</b><button class="ib" id="closeDrawer" aria-label="Close">✕</button></div>
+  <h2 id="rTitle"></h2><p id="rules" class="rules"></p>
+  <h2>This screen</h2>
+  <label class="chk"><input type="checkbox" id="sSound"> Sound effects</label>
+  <label class="chk"><input type="checkbox" id="sMotion"> Animations (off follows your device's reduced-motion setting)</label>
+  <p class="note">Keys: 1–6 chip value · Enter or Space plays · C clears · R repeats your last bets · H/S/D hit, stand, double · W war · U surrender · M sound · T chat · Esc back.</p>
+  <div id="hostTools"></div>
+  <div id="kinTools"></div>
+  <h2>Credits</h2><p class="note" id="creditNote"></p>
+  <button id="leave" class="danger">Leave the table</button>
+</aside>
+
+<script src="games.js"></script>
+<script src="table.js"></script>
+<script src="kit.js"></script>
+<script src="stage.js"></script>
+<script src="app.js"></script>
+<script>
+window.KQ = {
+  name: "Kin Casino",
+  after: ["#gear", "#menuQuit"],
+  ask: () => { const m = App.mode();
+    if (m === "host") return { title: "Close the table and quit?", text: "Everyone seated is told the table closed and this app stops checking in. Nothing runs until you open a new table.", go: "Close the table" };
+    if (m === "member") return { title: "Leave the table and quit?", text: "Your seat and your Kin's seat are given up, and this app stops checking in with the table.", go: "Leave the table" };
+    return { text: "Nothing is running except this screen. Your chip bank is kept." }; },
+  before: () => App.leaveForQuit(),
+  closedText: "Nothing is running. You can close this panel now."
+};
+</script>
+<!-- kin-quit: a Quit button that stops this app and closes its screen -->
+<style>
+button.kq-btn.kq-btn{position:fixed;top:10px;right:10px;z-index:2147483000;min-height:34px;padding:4px 14px;border-radius:999px;border:1px solid #f18c9a99;background:#1b1a22e6;color:#f7b8c0;font:600 13px/1 system-ui,-apple-system,"Segoe UI",sans-serif;cursor:pointer;box-shadow:0 2px 10px #0006}
+button.kq-btn.kq-btn:hover{border-color:#f18c9a}
+button.kq-btn.kq-btn.kq-inline{position:static;z-index:auto;min-height:30px;box-shadow:none;margin-left:auto;flex:none}
+#kq-layer{position:fixed;inset:0;z-index:2147483001;display:grid;place-items:center;padding:16px;background:#0c0b11f5;color:#f3f2f7;font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+#kq-layer[hidden]{display:none}
+#kq-box{width:100%;max-width:430px;text-align:center}
+#kq-box h2{margin:0 0 8px;font-size:22px;line-height:1.2}
+#kq-box p{color:#bdbacb;margin:0 0 18px}
+#kq-box .kq-row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+#kq-box button{min-height:46px;padding:8px 18px;border-radius:12px;font:600 15px system-ui,-apple-system,"Segoe UI",sans-serif;cursor:pointer}
+#kq-box .kq-go{background:#a5394b;border:1px solid #f18c9a;color:#fff}
+#kq-box .kq-no{background:transparent;border:1px solid #5c5a68;color:#eceaf3}
+</style>
+<div id="kq-layer" role="dialog" aria-modal="true" aria-labelledby="kq-title" hidden><div id="kq-box"></div></div>
+<script>
+/* Quit: asks first, lets the app finish its own stop step (window.KQ.before), then stops every
+   timer, ignores any late answer from Kindroid and covers the screen. "Open again" reloads the screen. */
+(() => {
+  const C = window.KQ || {};
+  const NAME = C.name || document.title || "this app";
+  const L = document.getElementById("kq-layer"), B = document.getElementById("kq-box"), Q = [];
+  // window.KQ.after: elements to place a Quit button right after (e.g. each view's status bar); otherwise one floats top right.
+  const quitButton = (inline) => { const b = document.createElement("button"); b.type = "button"; b.className = "kq-btn" + (inline ? " kq-inline" : ""); b.textContent = "Quit"; b.setAttribute("aria-haspopup", "dialog"); b.onclick = ask; Q.push(b); return b; };
+  for (const sel of C.after || []) { const t = document.querySelector(sel); if (t) t.after(quitButton(true)); }
+  if (!Q.length) document.body.appendChild(quitButton(false));
+  let quit = false, closing = false;
+  window.addEventListener("message", (e) => { if (quit) e.stopImmediatePropagation(); }, true);
+  const mk = (text, cls, fn) => { const b = document.createElement("button"); b.type = "button"; b.className = cls; b.textContent = text; b.onclick = fn; return b; };
+  function show(title, text, buttons) {
+    B.replaceChildren();
+    const h = document.createElement("h2"); h.id = "kq-title"; h.textContent = title;
+    const p = document.createElement("p"); p.textContent = text;
+    const row = document.createElement("div"); row.className = "kq-row"; row.append(...buttons);
+    B.append(h, p, row); L.hidden = false;
+    if (buttons[0]) buttons[0].focus();
+  }
+  function ask() {
+    const a = typeof C.ask === "function" ? C.ask() : {};
+    show(a.title || "Quit " + NAME + "?",
+      a.text || "This stops anything in progress and closes the app. Nothing runs until you open it again. Copy anything you want to keep first.",
+      [mk(a.go || "Quit", "kq-go", doQuit), mk("Keep going", "kq-no", () => { L.hidden = true; })]);
+  }
+  async function doQuit() {
+    if (closing) return; closing = true;
+    show("Closing " + NAME + "…", C.closingText || "Stopping what it was doing.", []);
+    if (typeof C.before === "function") {
+      try { await Promise.race([Promise.resolve(C.before()), new Promise((r) => setTimeout(r, C.waitMs || 45000))]); } catch (e) {}
+    }
+    quit = true;
+    let id = setTimeout(() => {}, 0);
+    while (id > 0) { clearTimeout(id); clearInterval(id); id--; }
+    for (const n of document.body.children) if (n !== L && n.tagName !== "SCRIPT" && n.tagName !== "STYLE") n.style.display = "none";
+    show(NAME + " is closed", C.closedText || "Nothing is running. You can close this panel now.", [mk("Open again", "kq-no", () => location.reload())]);
+  }
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !L.hidden && !closing) L.hidden = true; });
+})();
+</script>
+<!-- /kin-quit -->
