@@ -64,7 +64,7 @@ const App = (() => {
   function setTab(t) { tab = t; for (const [k, p] of Object.entries(TABS)) { $(k).classList.toggle("on", k === t); $(p).hidden = k !== t; } $("menuBar").hidden = !(t === "tHost" || t === "tJoin"); buildFloor(); buildLounge(); }
   function kinRow(box, cur, pickFn, none) {
     box.replaceChildren(...(none ? [{ id: "", name: "Just me" }] : []).concat(kins).map((k) => btn(k.name, () => pickFn(k.id), k.id === cur ? "on" : "")));
-    if (!kins.length) box.append(el("span", "Attach a Kin to Kin Casino in Kindroid to bring one.", "note"));
+    if (!kins.length) box.append(el("span", "Attach a Kin to Kin Casino in Kindroid to bring one.", "note")); else if (window.KRKins) window.KRKins.enhance(box, (none ? [null] : []).concat(kins.map((k) => k.id)));
   }
   function buildLounge() {
     $("bank0").textContent = money(bank.me); $("refill0").hidden = bank.me >= 5;
@@ -394,6 +394,8 @@ const App = (() => {
     else draw();
     checkAlive();
   }
+  // Kins saved in Kin Relay arrive from the page around this screen; the table app's own list (V.kins) only fills in when that is empty.
+  if (window.KRKins) window.KRKins.onChange((l) => { if (l.length) { kins = l.map((k) => ({ id: k.id, name: k.name })); buildLounge(); } });
   window.addEventListener("message", (e) => {
     const d = e.data || {};
     if (d.id && waiting[d.id]) { const f = waiting[d.id]; delete waiting[d.id]; f(d); }

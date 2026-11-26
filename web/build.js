@@ -22,7 +22,7 @@ fs.rmSync(OUT, { recursive: true, force: true }); fs.mkdirSync(OUT, { recursive:
 // the pages, as the PC app serves them, with the phone's wording
 const WORDS = [[/Your Kindroid games, on your own PC/g, "Your Kindroid games, on your own device"], [/Drop a Kindroid app here to add it/g, "Tap here to add a Kindroid app"], [/Drag the \.gz file it downloads onto this window\./g, "Then choose the .gz file it downloads."], [/\bPC\b/g, "device"], [/Windows account/g, "device"], [/Drop to add this game/g, "Add this game"]];
 const words = (s) => WORDS.reduce((t, [a, b]) => t.replace(a, b), s);
-for (const n of ["lobby.js", "bridge.js", "chario.js", "room.css"]) fs.writeFileSync(path.join(OUT, n), words(fs.readFileSync(path.join(ROOT, "public", n), "utf8")));
+for (const n of ["lobby.js", "bridge.js", "chario.js", "room.css", "screen-shim.js"]) fs.writeFileSync(path.join(OUT, n), words(fs.readFileSync(path.join(ROOT, "public", n), "utf8")));
 copy(path.join(ROOT, "public", "art"), path.join(OUT, "art"));
 const HEAD = `<link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#0f0a1c">

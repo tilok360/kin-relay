@@ -194,3 +194,6 @@ fieldset.fmt { border: 1px solid #ffffff22; border-radius: 12px; margin: 8px 0; 
 .secthead .primary, .secthead .ghost { white-space: nowrap; flex: none; }
 .secthead h2 { flex: 1 1 100%; }
 @media (min-width: 560px) { .secthead h2 { flex: 0 1 auto; margin-right: auto; } }
+.kpsearch { width: 100%; box-sizing: border-box; margin: 6px 0; }
+.kptools { align-items: center; margin: 4px 0 8px; gap: 6px; }
+.kinpanel #kpList { max-height: 46vh; overflow: auto; }

@@ -13,7 +13,6 @@
 <div class="bar">
   <a class="back" href="/">← Kin Relay</a>
   <span class="title" id="title">Loading…</span>
-  <span class="pill hide-s" title="Games made for Kindroid label some modes as using credits. Here, runs are free; your Kin is asked through your own API key.">"Uses credits" labels don't apply here</span>
   <div class="grow"></div>
   <span class="pill thinking" id="thinking" aria-live="polite"><span class="dot warn"></span><span id="thinkTxt">Asking your Kin…</span></span>
   <button class="kinbtn" id="kinBtn" aria-haspopup="dialog" aria-controls="kinPanel" aria-expanded="false" title="Which Kins play this game"><span class="avatar sm" id="kinBtnAv"></span><span id="kinBtnTxt">Kins</span></button>
@@ -22,7 +21,9 @@
 <div class="stagewrap"><iframe id="screen" title="Game" sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups allow-downloads" allow="clipboard-write; autoplay; fullscreen"></iframe></div>
 <div class="kinpanel" id="kinPanel" role="dialog" aria-labelledby="kpH" hidden>
   <h4 id="kpH">Kins in this game</h4>
-  <p class="hint">Tick the Kins this game can seat (games with more than one Kin seat use these). The one marked "Your Kin" plays with you.</p>
+  <p class="hint">This game can use all your saved Kins unless you tick some here. Tick only the ones you want to narrow it to; the one marked "Your Kin" plays with you. A Kin answers through your own Kindroid API key, as a normal Kin message, not Kindroid Apps credits (Kindroid hasn't said whether API messages count against your account).</p>
+  <input type="search" id="kpSearch" class="kpsearch" placeholder="Search your Kins" aria-label="Search your Kins" autocomplete="off" hidden>
+  <div class="row kptools"><span id="kpCount" class="hint"></span><div class="grow"></div><button class="ghost" id="kpAll" type="button">Tick all</button><button class="ghost" id="kpNone" type="button">Untick all</button></div>
   <div id="kpList"></div>
   <div class="row"><a class="ghost btn" href="/#characters">Edit characters</a><div class="grow"></div><button class="ghost" id="kpCancel">Cancel</button><button class="primary" id="kpSave">Save</button></div>
 </div>

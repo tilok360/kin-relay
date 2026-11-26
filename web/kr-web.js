@@ -110,6 +110,8 @@ var ap=Element.prototype.append;Element.prototype.append=function(){var a=[].sli
 var A0=window.Audio;window.Audio=function(src){var a=new A0();if(src)a.src=src;return a};
 var rf=window.fetch;window.fetch=function(u){var k=typeof u==="string"?key(u):null;if(k!==null){if(typeof F[k]==="string")return Promise.resolve(new Response(F[k]));if(B[k])return rf.call(window,B[k])}return rf?rf.apply(window,arguments):Promise.reject(new TypeError("Network is not available to a game screen here"))};
 })();`;
+  let SHIM = null;
+  async function shimText() { if (SHIM === null) { try { SHIM = await (await fetch("screen-shim.js", { cache: "no-cache" })).text(); } catch { SHIM = ""; } } return SHIM; }
   async function screenDoc(slug) {
     const app = apps.get(slug); if (!app || !app.screen) return "";
     const files = await appFiles(app), dir = NL.path.dirname(app.screen);
@@ -138,7 +140,8 @@ var rf=window.fetch;window.fetch=function(u){var k=typeof u==="string"?key(u):nu
     data.textContent = `window.__KR_F=${lit(T)};window.__KR_B=${lit(Bn)};window.__KR_DIR=${JSON.stringify(dir === "." ? "" : dir)};`;
     const poly = doc.createElement("script");
     poly.textContent = POLY;
-    head.prepend(poly); head.prepend(data); head.prepend(csp);
+    const shim = doc.createElement("script"); shim.textContent = (await shimText()).replace(/<\/script/gi, "<\\/script");
+    head.prepend(shim); head.prepend(poly); head.prepend(data); head.prepend(csp);
     return "<!doctype html>\n" + doc.documentElement.outerHTML;
   }
 
@@ -384,6 +387,12 @@ var rf=window.fetch;window.fetch=function(u){var k=typeof u==="string"?key(u):nu
         if (!app) return {};
         if (!(app.manifest.actions || []).map((x) => x.name).includes(String(b.name))) return { ok: false, summary: "This app has no action " + b.name };
         return runner(app.slug).action(b.name, b.input, S.gameKins(cfg, app.slug).current);
+      }
+      case "/api/open": {
+        if (!app) return { ok: false };
+        const wakes = (app.manifest.actions || []).some((x) => x.name === "wake");
+        if (wakes) Promise.resolve(runner(app.slug).action("wake", {}, S.gameKins(cfg, app.slug).current)).catch(() => {});
+        return { ok: true, started: wakes };
       }
       case "/api/reload": await loadApps(); await refreshLinks(); return okState();
       case "/api/remove": {

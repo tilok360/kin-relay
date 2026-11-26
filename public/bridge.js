@@ -22,7 +22,22 @@
   const game = () => (state.games && state.games[slug]) || { kins: state.settings.kins.map((k) => k.id), current: state.settings.currentKin };
   const gameKins = () => game().kins.map((id) => state.settings.kins.find((k) => k.id === id)).filter(Boolean);
   // Kindroid sends the Kins attached to the app; here, the characters you chose for this game (all of them unless you chose).
-  const kinsMsg = () => ({ kin: "kins", ok: true, kins: gameKins().map((k) => ({ id: k.id, name: k.name })), current: game().current || undefined });
+  // Each Kin may carry a small picture (a data URL, made here from the character's picture) so a game can show it.
+  const thumbs = new Map(); // cid -> data URL ("" when it can't be made)
+  const kinsMsg = () => ({ kin: "kins", ok: true, kins: gameKins().map((k) => ({ id: k.id, name: k.name, avatar: thumbs.get(k.cid) || undefined })), current: game().current || undefined });
+  function makeThumb(k) {
+    return new Promise((resolve) => {
+      const i = new Image(); i.onload = () => { try { const c = document.createElement("canvas"); c.width = c.height = 48; const s = Math.min(i.naturalWidth, i.naturalHeight), x = c.getContext("2d"); x.drawImage(i, (i.naturalWidth - s) / 2, (i.naturalHeight - s) / 2, s, s, 0, 0, 48, 48); resolve(c.toDataURL("image/jpeg", 0.7)); } catch { resolve(""); } }; i.onerror = () => resolve("");
+      i.src = WEB ? window.KR.avatarUrl(k) : `/avatars/${k.cid}?t=${TOKEN}`;
+    });
+  }
+  let thumbRun = 0;
+  async function loadThumbs() {
+    const run = ++thumbRun, todo = state.settings.kins.filter((k) => k.avatar && !thumbs.has(k.cid));
+    if (!todo.length) return;
+    for (let n = 0; n < todo.length && run === thumbRun; n += 4) await Promise.all(todo.slice(n, n + 4).map(async (k) => thumbs.set(k.cid, await makeThumb(k))));
+    if (run === thumbRun) post(kinsMsg()); // Kindroid sends the Kin list again when it changes; so do we, now with pictures
+  }
   const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
   function avatarInto(box, k) {
     box.replaceChildren();
@@ -66,7 +81,7 @@
       if (m.kin === "ask") {
         thinking(1);
         try {
-          const j = await api("/api/ask", { slug, question: String(m.question || "") });
+          const j = await api("/api/ask", { slug, question: String(m.question || ""), kin: typeof m.kinId === "string" ? m.kinId : "" });
           if (!j.ok) toast(j.error || "Your Kin could not answer.");
           return reply({ kin: "ask", ok: !!j.ok, text: j.ok ? j.text : "", error: j.ok ? undefined : j.error });
         } finally { thinking(-1); }
@@ -82,21 +97,32 @@
 
   // ---------- choosing Kins for this game ----------
   const panel = $("kinPanel");
+  const rows = () => [...$("kpList").querySelectorAll(".kprow")];
+  const refilter = () => {
+    const q = $("kpSearch").value.trim().toLowerCase(); let shown = 0;
+    for (const r of rows()) { const ok = !q || r.dataset.name.includes(q); r.hidden = !ok; if (ok) shown++; }
+    const n = rows().length, ticked = panel.querySelectorAll('#kpList input[type="checkbox"]:checked').length;
+    $("kpCount").textContent = n ? `${n} saved Kin${n === 1 ? "" : "s"}${ticked ? `, ${ticked} ticked` : ", none ticked (the game gets all of them)"}${q ? `, ${shown} shown` : ""}` : "";
+  };
+  $("kpSearch").oninput = refilter;
+  $("kpAll").onclick = () => { for (const r of rows()) if (!r.hidden) r.querySelector('input[type="checkbox"]').checked = true; refilter(); };
+  $("kpNone").onclick = () => { for (const r of rows()) { r.querySelector('input[type="checkbox"]').checked = false; r.querySelector('input[type="radio"]').checked = false; } refilter(); };
   function openPanel() {
-    const box = $("kpList"); box.replaceChildren();
+    const box = $("kpList"); box.replaceChildren(); $("kpSearch").value = "";
     if (!state.settings.kins.length) {
       const p = el("p", "hint", "You haven't added a Kin yet. Solo games need nothing; to play with your Kin, add one on "); const a = el("a", null, "Characters"); a.href = WEB ? window.KR.homeUrl("#characters") : "/#characters"; p.append(a, document.createTextNode(".")); box.append(p);
     }
     const g = game();
     for (const k of state.settings.kins) {
-      const row = el("div", "kprow");
-      const cb = el("input"); cb.type = "checkbox"; cb.checked = g.kins.includes(k.id); cb.value = k.id; cb.id = "kp-" + k.id;
+      const row = el("div", "kprow"); row.dataset.name = k.name.toLowerCase();
+      const cb = el("input"); cb.type = "checkbox"; cb.checked = state.games && state.games[slug] && state.games[slug].chosen ? g.kins.includes(k.id) : false; cb.value = k.id; cb.id = "kp-" + k.id;
       const lab = el("label", "kpname"); lab.htmlFor = cb.id; const av = el("span", "avatar sm"); avatarInto(av, k); lab.append(av, el("span", null, k.name));
       const rl = el("label", "kpcur"); const rb = el("input"); rb.type = "radio"; rb.name = "kpCur"; rb.value = k.id; rb.checked = k.id === g.current; rl.append(rb, el("span", null, "Your Kin"));
       rb.onchange = () => { if (rb.checked) cb.checked = true; };
-      cb.onchange = () => { if (!cb.checked && rb.checked) rb.checked = false; };
+      cb.onchange = () => { if (!cb.checked && rb.checked) rb.checked = false; refilter(); };
       row.append(cb, lab, rl); box.append(row);
     }
+    $("kpSearch").hidden = state.settings.kins.length <= 8; refilter();
     panel.hidden = false; $("kinBtn").setAttribute("aria-expanded", "true");
     const first = panel.querySelector("input,a,button"); if (first) first.focus();
   }
@@ -115,6 +141,8 @@
   (async () => {
     state = await api("/api/state");
     const app = renderBar();
+    api("/api/open", { slug }).catch(() => {}); // starts the game's run, as opening a screen does in Kindroid
+    loadThumbs();
     if (!app || !app.screen) { $("title").textContent = "This game has no screen."; return; }
     if (WEB) await window.KR.openScreen(frame, slug); else frame.src = `${ORIGIN}/apps/${encodeURIComponent(slug)}/${app.screenFile}`;
     frame.focus();

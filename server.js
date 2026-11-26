@@ -21,7 +21,7 @@ const { RelayLink } = require("./lib/relay-link");
 const I = require("./lib/installer");
 const IO = require("./public/chario.js");
 
-const VERSION = "1.2.0";
+const VERSION = "1.2.1";
 // Games you add go to APPS_DIR: the games/ folder next to this file when run from the zip, or your data folder in the
 // Windows app (its program folder is replaced on every update). Games that come with the Windows app are read from
 // BUILTIN_DIR; one you add with the same name takes its place.
@@ -137,6 +137,19 @@ function sendFile(res, file, extraHeaders) {
     if (err) { res.writeHead(404, { "content-type": "text/plain" }); return res.end("Not found"); }
     res.writeHead(200, Object.assign({ "content-type": TYPES[path.extname(file).toLowerCase()] || "application/octet-stream", "cache-control": "no-cache" }, extraHeaders || {}));
     res.end(data);
+  });
+}
+// A game's screen page gets Kin Relay's own small script first: it words the screen for this app (no "uses credits") and
+// gives it the saved-Kin list helpers. The game's files on disk are never changed.
+let SHIM_JS = null;
+function shimJs() { if (SHIM_JS === null) { try { SHIM_JS = fs.readFileSync(path.join(PUBLIC, "screen-shim.js"), "utf8").replace(/<\/script/gi, "<\\/script"); } catch { SHIM_JS = ""; } } return SHIM_JS; }
+function sendScreenHtml(res, file) {
+  fs.readFile(file, "utf8", (err, html) => {
+    if (err) { res.writeHead(404, { "content-type": "text/plain" }); return res.end("Not found"); }
+    const tag = "<script>" + shimJs() + "</script>";
+    html = /<head(?:\s[^>]*)?>/i.test(html) ? html.replace(/<head(?:\s[^>]*)?>/i, (m) => m + tag) : tag + html;
+    res.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-cache" });
+    res.end(html);
   });
 }
 function readBody(req, max = 2 * 1024 * 1024) {
@@ -287,6 +300,12 @@ async function api(req, res, url) {
       if (!acts.includes(String(b.name))) return json(res, 200, { ok: false, summary: "This app has no action " + b.name });
       return json(res, 200, await runner(app.slug).action(b.name, b.input, S.gameKins(S.settings(), app.slug).current));
     }
+    case "/api/open": { // a screen was opened: games that have a "wake" action start their run now (Kindroid does this when a screen opens)
+      if (!app) return json(res, 404, { ok: false });
+      const wakes = (app.manifest.actions || []).some((x) => x.name === "wake");
+      if (wakes) runner(app.slug).action("wake", {}, S.gameKins(S.settings(), app.slug).current).catch(() => {});
+      return json(res, 200, { ok: true, started: wakes });
+    }
     case "/api/reload": loadApps(); refreshLinks(); return json(res, 200, { ok: true, state: publicState() });
     case "/api/remove": {
       if (!app) return json(res, 404, { ok: false });
@@ -407,6 +426,7 @@ const server = http.createServer(async (req, res) => {
       const app = apps.get(am[1]); if (!app || !app.screen) { res.writeHead(404); return res.end(); }
       const base = path.join(app.dir, path.dirname(app.screen));
       const f = inside(base, am[2] || path.basename(app.screen));
+      if (f && /\.html?$/i.test(f)) return sendScreenHtml(res, f);
       return f ? sendFile(res, f) : (res.writeHead(404), res.end());
     }
     if (p === "/internal/ask" && req.method === "POST") return await api(req, res, url); // a game's run (needs its run token)

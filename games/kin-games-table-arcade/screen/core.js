@@ -18,7 +18,7 @@
   }
   const read = async (p) => { const m = await send({ kin: "files.read", path: p }); try { return m && m.body ? JSON.parse(m.body) : null; } catch { return null; } };
   const write = (p, o) => send({ kin: "files.write", path: p, body: JSON.stringify(o) });
-  const ask = async (q) => { const m = await send({ kin: "ask", question: q.slice(0, 7900) }, ASK_MS); return m && m.ok && m.text ? String(m.text) : null; };
+  const ask = async (q) => { const m = await send({ kin: "ask", question: q.slice(0, 7900), kinId: current ? current.id : undefined }, ASK_MS); return m && m.ok && m.text ? String(m.text) : null; };
   KG.read = read; KG.write = write;
 
   let kins = [], current = null, fromChat = false;
@@ -27,11 +27,13 @@
     if (d.id && waiting[d.id]) { const f = waiting[d.id]; delete waiting[d.id]; f(d); }
     if (d.kin === "kins") {
       kins = Array.isArray(d.kins) ? d.kins : [];
-      fromChat = typeof d.current === "string";
-      current = (fromChat && kins.find((k) => k.id === d.current)) || kins[0] || null;
+      fromChat = typeof d.current === "string"; window.__krCur = d.current;
+      pickCurrent();
       showMode(); renderShelves();
     }
   });
+  // Which Kin plays: the one chosen on the lounge (remembered in this app's settings), else the one the page around the screen names, else the first.
+  function pickCurrent() { const want = (typeof settings === "object" && settings && settings.kin) || ""; current = (want && kins.find((k) => k.id === want)) || (fromChat && kins.find((k) => k.id === window.__krCur)) || kins[0] || null; }
   const realKin = () => (current && current.name) || "Your Kin";
   const hasKin = () => !!current;
 
@@ -241,8 +243,16 @@
     $("modeSolo").setAttribute("aria-pressed", isSolo); $("modeKin").setAttribute("aria-pressed", !isSolo);
     $("kinWho").textContent = current ? `Play ${current.name}` : "Play your Kin";
     $("kinOpts").hidden = isSolo;
-    $("kinbar").textContent = current ? (kins.length > 1 && !fromChat ? `${current.name} (the first attached Kin; open ${CAT.APP.name} from another Kin's chat to play that one).` : "") : "No Kin is attached yet: attach one in the app's settings → Kins. Until then the app plays the other side.";
+    renderKinSel();
+    $("kinbar").textContent = current ? (kins.length > 1 && !fromChat && !window.KRKins ? `${current.name} (the first attached Kin; open ${CAT.APP.name} from another Kin's chat to play that one).` : "") : "No Kin is attached yet: attach one in the app's settings → Kins. Until then the app plays the other side.";
     $("modeNote").textContent = isSolo ? "Solo runs entirely on this screen: the computer plays, nothing is sent to your Kin, and it uses no Kindroid credits and none of the app's runs." : "Your Kin is asked for its moves or a line now and then (each question takes a few seconds and uses Kindroid credits, like a message). Every finished game is saved with one short run (game_over) and your Kin is told how it went.";
+  }
+  // Choose which of your saved Kins to play (shown when Kin Relay has more than one).
+  function renderKinSel() {
+    const box = $("kinSel"); if (!box) return;
+    const on = !!window.KRKins && kins.length > 1, note = $("kinSelNote");
+    box.hidden = !on; if (note) note.hidden = !on; if (!on) return;
+    window.KRKins.chooser(box, { current: current && current.id, pick: (id) => { settings.kin = id; saveSettings(); pickCurrent(); showMode(); } });
   }
   function renderShelves() {
     const host = $("shelves"); host.textContent = "";
@@ -314,10 +324,10 @@
     });
     parent.postMessage({ kin: "kins" }, "*");
     read("settings.json").then((s) => {
-      if (s) { for (const k of ["play", "mode", "level"]) if (typeof s[k] === "string") settings[k] = s[k]; if (s.sound && typeof s.sound === "object") settings.sound = { on: s.sound.on !== false, vol: Math.max(0, Math.min(1, Number(s.sound.vol) || 0)) }; if (Array.isArray(s.favs)) settings.favs = s.favs.filter((x) => typeof x === "string").slice(0, 60); if (s.prefs && typeof s.prefs === "object") for (const [k, v] of Object.entries(s.prefs).slice(0, 40)) if (typeof v === "number" || typeof v === "string") settings.prefs[k] = typeof v === "string" ? v.slice(0, 40) : v; }
+      if (s) { for (const k of ["play", "mode", "level", "kin"]) if (typeof s[k] === "string") settings[k] = s[k]; if (s.sound && typeof s.sound === "object") settings.sound = { on: s.sound.on !== false, vol: Math.max(0, Math.min(1, Number(s.sound.vol) || 0)) }; if (Array.isArray(s.favs)) settings.favs = s.favs.filter((x) => typeof x === "string").slice(0, 60); if (s.prefs && typeof s.prefs === "object") for (const [k, v] of Object.entries(s.prefs).slice(0, 40)) if (typeof v === "number" || typeof v === "string") settings.prefs[k] = typeof v === "string" ? v.slice(0, 40) : v; }
       if (s && !s.play) settings.play = "kin"; // people who already played keep playing their Kin until they switch
       $("mode").value = settings.mode; $("level").value = settings.level; $("level2").value = settings.level;
-      applySound(); showMode(); renderShelves();
+      pickCurrent(); applySound(); showMode(); renderShelves();
       if (Q.get("game")) open(Q.get("game")); // a game named in the address opens once settings are in
     });
     read("achievements.json").then((b) => { achBook = b || {}; renderShelves(); });

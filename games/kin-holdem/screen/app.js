@@ -81,16 +81,20 @@ const App = (() => {
     if (mode === "solo") SV = Solo.view();
     draw();
   }
+  // The Kins come from the table app's view when it has written one; until it has (it starts when this screen opens), from Kin Relay's saved Kins.
+  const allKins = () => (V && V.kins && V.kins.length ? V.kins : window.KRKins ? window.KRKins.list() : []);
+  const enh = (box, ks, justMe) => { if (window.KRKins) window.KRKins.enhance(box, (justMe ? [null] : []).concat(ks.map((k) => k.id))); };
+  if (window.KRKins) window.KRKins.onChange(() => { if (V ? !V.kins || !V.kins.length : true) build(); else buildMenuKins(); });
   function buildMenuKins() {
-    const kins = (V && V.kins) || [], cur = chosenKin ?? ((V && V.kinId) || "");
+    const kins = allKins(), cur = chosenKin ?? ((V && V.kinId) || "");
     if (chosenKin !== null && chosenKin === ((V && V.kinId) || "")) chosenKin = null;
     $("bring").replaceChildren(...[{ id: "", name: "Just me" }].concat(kins).map((k) => btn(k.name, () => pickKin(k.id, false), k.id === cur ? "on" : "")));
-    if (!kins.length) $("bring").append(el("span", "Attach a Kin to this app in Kindroid to bring one.", "note"));
+    if (!kins.length) $("bring").append(el("span", "Attach a Kin to this app in Kindroid to bring one.", "note")); else enh($("bring"), kins, true);
     if (soloSel && JSON.stringify(soloSel) === JSON.stringify((V && V.kinIds) || [])) soloSel = null;
     const sel = soloSel || (V && V.kinIds) || [];
     for (const box of [$("soloPick"), $("soloPick2")]) {
       box.replaceChildren(...kins.map((k) => btn((sel.includes(k.id) ? "✓ " : "") + k.name, () => toggleSolo(k.id), sel.includes(k.id) ? "on" : "")));
-      if (!kins.length) box.append(el("span", "Attach Kins to this app in Kindroid to play with them.", "note"));
+      if (!kins.length) box.append(el("span", "Attach Kins to this app in Kindroid to play with them.", "note")); else enh(box, kins);
     }
     $("soloNote").textContent = `${sel.length} of 10 chosen.`;
   }
@@ -409,9 +413,11 @@ const App = (() => {
     $("memberInfo").textContent = host ? "" : `Blinds ${T.settings.sb}/${T.settings.bb} · starting chips ${T.settings.start} · ${T.settings.timer}s per move · rebuys ${T.settings.rebuys ? "allowed" : "off"}. The host's copy deals and holds every card.`;
     const kinSolo = !!T.solo;
     for (const g of [$("hostTools").querySelector("#invite").parentNode]) void g;
-    $("kinPick").hidden = kinSolo || !v.kins.length; $("soloKinBox").hidden = !(kinSolo && host);
+    const tk = allKins();
+    $("kinPick").hidden = kinSolo || !tk.length; $("soloKinBox").hidden = !(kinSolo && host);
     const cur = chosenKin ?? (v.kinId || "");
-    $("kinPick").replaceChildren(...[{ id: "", name: "Just me" }].concat(v.kins).map((k) => btn(k.name, () => pickKin(k.id, true), k.id === cur ? "on" : "")));
+    $("kinPick").replaceChildren(...[{ id: "", name: "Just me" }].concat(tk).map((k) => btn(k.name, () => pickKin(k.id, true), k.id === cur ? "on" : "")));
+    enh($("kinPick"), tk, true);
     buildMenuKins();
     const kb = $("kinBox"); kb.replaceChildren();
     const mine = T.seats.filter((s) => s.owner === v.me.id && s.kind === "kin");

@@ -43,6 +43,13 @@ PHONE AND WEB NOTES
    and your relay are contacted. Tables work while the app is open. Drag and drop becomes a "Pick file"
    button. Added games that wait for your Kin in one blocking step don't work there; the four built-in games do.
 
+PICKING A KIN INSIDE A GAME
+   Every game gets all your saved Kins. Where a game asks you to pick a Kin, every saved Kin is listed with a
+   picture, and a search box appears when you have more than 8. The "Kins" button at the top of a game narrows
+   which Kins that game gets (leave all unticked to give it all of them). A Kin answers through your own Kindroid
+   API key as a normal Kin message, not Kindroid Apps credits. Kin Relay can't see whether Kindroid counts API
+   messages against your account, so check your account after a first session.
+
 IMPORT AND EXPORT KINS
    Characters > Import reads Kindroid's data export (.jsonl), a Kin Relay file or a Kin Studio character file.
    Chats in the file are ignored. Tick the Kins you want; for ones you already have, choose Update or Skip.

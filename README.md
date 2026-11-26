@@ -82,6 +82,11 @@ On **Characters**, **Import** reads the **data export** from Kindroid (the `.jso
 
 (These pictures use made-up example Kins.)
 
+### Picking a Kin inside a game
+Every game gets **all** your saved Kins (each needs an AI ID, which Kin Relay checks when you add or import it). Inside a game, the lists where you pick a Kin show every one of them with a picture, and a **search box** appears when you have more than 8. The **Kins** button at the top of a game narrows which Kins that game gets (leave it unticked to give the game all of them).
+
+**About "credits":** games made for Kindroid label some modes "uses credits". In Kin Relay those labels are rewritten: the game runs on your device, and when a Kin plays it answers through **your own Kindroid API key** as a normal Kin message, not **Kindroid Apps credits**. Whether Kindroid counts API messages against your account isn't something Kin Relay can see, so check your account after a first session.
+
 ## What's inside
 
 - **Games that come with it:** Kin Casino, Kin Hold'em, Kin Games Table & Arcade, and Kin Games Board & Cards.
@@ -102,4 +107,4 @@ On **Characters**, **Import** reads the **data export** from Kindroid (the `.jso
 
 - `ADAPTER-GUIDE.md`: how Kin Relay runs Kindroid apps (the screen bridge, the `kin` command shim, and the relay protocol).
 - `server.js` is the app (plain Node.js with no packages). `relay.js` is the relay. `cloudflare/` has the Workers relay. `desktop/` builds the Windows installer and the Mac zips (Electron and electron-builder; `cd desktop && npm install && node build.js dist` or `node build.js mac`; the Windows build needs wine on Linux, and `desktop/zipapp.py` zips a Mac app). `web/` builds the web and iPhone app (`node web/build.js`, output in `web-dist/`, which can be hosted anywhere static), and `android/` builds the Android app (`android/build.sh`, needs a JDK and the Android SDK command-line tools; set `KR_KEYSTORE` to your own key file, and keep that file safe, because updates need the same key).
-- Tests are in `dev/`: `smoke.py` (headless Chrome: solo, Kin via a mock API, a two-player table, drag-and-drop), `desktop-ui.test.py` (the Electron window), `chario.test.js` and `chars-ui.test.py` (Import and Export, with made-up fixtures in `dev/fixtures/`), `web-smoke.py` (the phone/web app as two phones), `installer.test.js`, and `relay-protocol.test.js <relay URL>`. They never contact Kindroid. The drag-and-drop tests need a "Get its code" download saved as `samples/kindroid-get-code-sample.gz`, which isn't included here.
+- Tests are in `dev/`: `smoke.py` (headless Chrome: solo, Kin via a mock API, a two-player table, drag-and-drop), `desktop-ui.test.py` (the Electron window), `chario.test.js` and `chars-ui.test.py` (Import and Export, with made-up fixtures in `dev/fixtures/`), `kins-in-games.test.py` and `web-kins.py` (44 Kins imported, every game lists them), `web-smoke.py` (the phone/web app as two phones), `installer.test.js`, and `relay-protocol.test.js <relay URL>`. They never contact Kindroid. The drag-and-drop tests need a "Get its code" download saved as `samples/kindroid-get-code-sample.gz`, which isn't included here.
