@@ -52,4 +52,18 @@ function dist() {
   const cfgFile = path.join(__dirname, ".builder.json"); fs.writeFileSync(cfgFile, JSON.stringify(cfg, null, 2));
   execFileSync(process.execPath, [require.resolve("electron-builder/cli.js"), "--win", "nsis", "--x64", "--config", cfgFile, "--publish", "never"], { stdio: "inherit", cwd: __dirname });
 }
-({ stage, dist })[process.argv[2] || "dist"]();
+function mac() {
+  // macOS build, unsigned (no Apple developer account): a .dmg and a .zip for Intel (x64) and Apple Silicon (arm64).
+  stage();
+  const cfg = {
+    appId: "com.tilok360.kinrelay", productName: "Kin Relay", copyright: "Made by tilok360",
+    directories: { app: STAGE, output: path.join(__dirname, "mac-out"), buildResources: path.join(__dirname, "assets") },
+    electronVersion: require("./node_modules/electron/package.json").version,
+    asar: false, files: ["**/*"], electronLanguages: ["en-US"], compression: "maximum",
+    mac: { target: [{ target: "dmg", arch: ["x64", "arm64"] }, { target: "zip", arch: ["x64", "arm64"] }], icon: path.join(__dirname, "assets", "icon.icns"), category: "public.app-category.games", identity: null, hardenedRuntime: false, gatekeeperAssess: false, artifactName: "Kin-Relay-${version}-mac-${arch}.${ext}" },
+    dmg: { sign: false, title: "Kin Relay ${version}" },
+  };
+  const cfgFile = path.join(__dirname, ".builder-mac.json"); fs.writeFileSync(cfgFile, JSON.stringify(cfg, null, 2));
+  execFileSync(process.execPath, [require.resolve("electron-builder/cli.js"), "--mac", "--x64", "--arm64", "--config", cfgFile, "--publish", "never"], { stdio: "inherit", cwd: __dirname });
+}
+({ stage, dist, mac })[process.argv[2] || "dist"]();

@@ -77,7 +77,11 @@
 
   <!-- ================= Characters ================= -->
   <section class="view" id="view-characters" hidden aria-labelledby="cH">
-    <div class="secthead"><h2 class="pageh" id="cH">Characters</h2><button class="primary" id="newChar">+ Add a Kin</button></div>
+    <div class="secthead"><h2 class="pageh" id="cH">Characters</h2>
+      <button class="ghost" id="importChars" title="Bring in Kins from a Kindroid data export, a Kin Relay file or a Kin Studio file">Import</button>
+      <button class="ghost" id="exportChars" title="Save your Kins to a file">Export</button>
+      <button class="primary" id="newChar">+ Add a Kin</button>
+      <input type="file" id="importFile" accept=".jsonl,.json,.txt,application/json,application/x-ndjson,text/plain" hidden></div>
     <p class="hint">Your Kins, kept on this PC. Games ask a Kin through Kindroid's API with your key and that Kin's AI ID. Pick which Kins play each game from the game's top bar.</p>
     <div class="chars">
       <div class="charlist" id="charList" aria-label="Your characters"></div>
@@ -104,6 +108,10 @@
           <label for="cShare">Share code</label>
           <input id="cShare" maxlength="12" placeholder="5 letters" spellcheck="false" autocomplete="off">
           <p class="hint">Only used if Settings → "How your Kin is asked" is set to Quietly.</p>
+        </details>
+        <details class="acc" id="cDetailsBox"><summary>Profile details <span class="opt">(optional, kept for reference)</span></summary>
+          <p class="hint">Backstory, memories and the like, as in Kindroid. They're only stored here and in files you export. Nothing sends them anywhere.</p>
+          <div id="cDetails"></div>
         </details>
         <div class="msg" id="charMsg" role="status" aria-live="polite"></div>
         <div class="row">
@@ -155,8 +163,8 @@
         <label for="relay">Relay address</label>
         <div class="row"><input id="relay" class="grow" placeholder="https://your-relay.example.com/" spellcheck="false"><button class="primary" id="saveRelay">Save</button></div>
         <div class="msg" id="relayMsg" role="status"></div>
-        <label class="choice"><input type="checkbox" id="ownRelay"><span>Run a relay on this PC<small>For friends on your home network (or with port forwarding or a free tunnel, see the README). Give them the address below.</small></span></label>
-        <code class="share" id="ownRelayAddr" hidden></code>
+        <label class="choice pc-only"><input type="checkbox" id="ownRelay"><span>Run a relay on this PC<small>For friends on your home network (or with port forwarding or a free tunnel, see the README). Give them the address below.</small></span></label>
+        <code class="share pc-only" id="ownRelayAddr" hidden></code>
       </section>
     </div>
   </section>
@@ -165,6 +173,28 @@
 <div class="dropcover" id="dropcover" aria-hidden="true"><div><img src="/art/logo.svg" alt=""><strong>Drop to add this game</strong><span>.gz from "Get its code" (also .tgz, .tar or .zip)</span></div></div>
 <dialog id="dlg" aria-labelledby="dlgH"><h2 id="dlgH"></h2><div id="dlgBody"></div><div class="row dlgbtns" id="dlgBtns"></div></dialog>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
+<dialog id="impDlg" class="wide" aria-labelledby="impH">
+  <h2 id="impH">Import characters</h2>
+  <p class="hint" id="impInfo"></p>
+  <div class="imptools"><button type="button" class="ghost" id="impAll">Select all</button><button type="button" class="ghost" id="impNone">Select none</button><button type="button" class="ghost" id="impNew">Only new</button>
+    <input id="impFind" type="search" placeholder="Search by name" aria-label="Search the list" autocomplete="off"><span class="hint" id="impCount"></span></div>
+  <div class="implist" id="impList" role="group" aria-label="Characters found in the file"></div>
+  <div class="msg" id="impMsg" role="status" aria-live="polite"></div>
+  <div class="row dlgbtns"><button type="button" class="ghost" id="impCancel">Cancel</button><button type="button" class="primary" id="impGo">Import</button></div>
+</dialog>
+<dialog id="expDlg" class="wide" aria-labelledby="expH">
+  <h2 id="expH">Export characters</h2>
+  <fieldset class="fmt"><legend>File type</legend>
+    <label class="radio"><input type="radio" name="expFmt" value="relay" checked> <span><b>Kin Relay file</b> <span class="hint">Everything Kin Relay keeps, with pictures. Import it into Kin Relay on another device.</span></span></label>
+    <label class="radio"><input type="radio" name="expFmt" value="studio"> <span><b>Kin Studio file</b> <span class="hint">The same Kins in Kin Studio's character format.</span></span></label>
+  </fieldset>
+  <div class="imptools"><button type="button" class="ghost" id="expAll">Select all</button><button type="button" class="ghost" id="expNone">Select none</button><span class="hint" id="expCount"></span></div>
+  <div class="implist" id="expList" role="group" aria-label="Characters to export"></div>
+  <p class="hint">The file holds AI IDs, profile text and pictures, so keep it private. It never holds your API key.</p>
+  <div class="msg" id="expMsg" role="status" aria-live="polite"></div>
+  <div class="row dlgbtns"><button type="button" class="ghost" id="expCancel">Cancel</button><button type="button" class="primary" id="expGo">Export</button></div>
+</dialog>
+<script src="/chario.js"></script>
 <script src="/lobby.js"></script>
 </body>
 </html>

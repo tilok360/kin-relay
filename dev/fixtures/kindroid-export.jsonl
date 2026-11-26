@@ -1,0 +1,60 @@
+{"type":"meta","schema_version":2,"attachment_mode":"none","generated_at":"2026-01-01T00:00:00Z"}
+{"type":"user","data":{"user_name":"Test Person","ai_list":["fixtureAiOne000000001","fixtureAiTwo000000002","fixtureAiThree0000003"]}}
+{"type":"persona","data":{"name":"Test persona"}}
+{"type":"entity","entity_type":"ai","entity_id":"fixtureAiOne000000001","data":{"ai_id":"fixtureAiOne000000001","ai_name":"Testa","ai_gender":"female","ai_backstory":"Testa is a made-up test character who likes lighthouses.","ai_memory":"Testa remembers the fake harbour.","ai_example_message":"Hello from the test fixtures.","ai_directive":"Be kind.","ai_additional_context":"Synthetic data.","default_room_bio":"Testa's room","custom_avatar_description":"A drawing of a test lighthouse.","custom_avatar_face_prompt":"round face","developed_context_v1":"Learned nothing real.","template_share_code":"ABC1x","template_id":"tpl-fixtureAiOne000000001","created_at":1700000001,"custom_avatar_url":"https://storage.kindroid.ai/fixture/testa.png"}}
+{"type":"entity","entity_type":"ai","entity_id":"fixtureAiTwo000000002","data":{"ai_id":"fixtureAiTwo000000002","ai_name":"Bruno","ai_gender":"male","ai_backstory":"Bruno is a made-up test character who likes lighthouses.","ai_memory":"Bruno remembers the fake harbour.","ai_example_message":"Hello from the test fixtures.","ai_directive":"Be kind.","ai_additional_context":"Synthetic data.","default_room_bio":"Bruno's room","custom_avatar_description":"A drawing of a test lighthouse.","custom_avatar_face_prompt":"round face","developed_context_v1":"Learned nothing real.","template_share_code":"","template_id":"tpl-fixtureAiTwo000000002","created_at":1700000002}}
+{"type":"entity","entity_type":"ai","entity_id":"fixtureAiThree0000003","data":{"ai_id":"fixtureAiThree0000003","ai_name":"Cleo","ai_gender":"female","ai_backstory":"Cleo is a made-up test character who likes lighthouses.","ai_memory":"Cleo remembers the fake harbour.","ai_example_message":"Hello from the test fixtures.","ai_directive":"Be kind.","ai_additional_context":"Synthetic data.","default_room_bio":"Cleo's room","custom_avatar_description":"A drawing of a test lighthouse.","custom_avatar_face_prompt":"round face","developed_context_v1":"Learned nothing real.","template_share_code":"ABC3x","template_id":"tpl-fixtureAiThree0000003","created_at":1700000003,"display_avatar_url":"https://evil.example/not-allowed.png"}}
+{"type":"entity","entity_type":"ai","entity_id":"kn_fakekey","data":{"ai_id":"kn_fakekey","ai_name":"Keyholder","ai_gender":"female","ai_backstory":"Keyholder is a made-up test character who likes lighthouses.","ai_memory":"Keyholder remembers the fake harbour.","ai_example_message":"Hello from the test fixtures.","ai_directive":"Be kind.","ai_additional_context":"Synthetic data.","default_room_bio":"Keyholder's room","custom_avatar_description":"A drawing of a test lighthouse.","custom_avatar_face_prompt":"round face","developed_context_v1":"Learned nothing real.","template_share_code":"ABC4x","template_id":"tpl-kn_fakekey","created_at":1700000004}}
+{"type":"entity","entity_type":"ai","entity_id":"","data":{"ai_name":"No Id"}}
+{"type":"entity","entity_type":"shared_template","entity_id":"tpl-fixtureAiOne000000001","data":{"template_id":"tpl-fixtureAiOne000000001","ai_tagline":"Fixture tagline","ai_greeting":"Fixture greeting"}}
+{"type":"text_message","entity_type":"ai","entity_id":"fixtureAiOne000000001","data":{"text":"synthetic chat line 0"}}
+{"type":"text_message","entity_type":"ai","entity_id":"fixtureAiOne000000001","data":{"text":"synthetic chat line 1"}}
+{"type":"text_message","entity_type":"ai","entity_id":"fixtureAiOne000000001","data":{"text":"synthetic chat line 2"}}
+{"type":"text_message","entity_type":"ai","entity_id":"fixtureAiOne000000001","data":{"text":"synthetic chat line 3"}}
+{"type":"text_message","entity_type":"ai","entity_id":"fixtureAiOne000000001","data":{"text":"synthetic chat line 4"}}
+{"type":"text_message","entity_type":"ai","entity_id":"fixtureAiOne000000001","data":{"text":"synthetic chat line 5"}}
+{"type":"text_message","entity_type":"ai","entity_id":"fixtureAiOne000000001","data":{"text":"synthetic chat line 6"}}
+{"type":"text_message","entity_type":"ai","entity_id":"fixtureAiOne000000001","data":{"text":"synthetic chat line 7"}}
+{"type":"text_message","entity_type":"ai","entity_id":"fixtureAiOne000000001","data":{"text":"synthetic chat line 8"}}
+{"type":"text_message","entity_type":"ai","entity_id":"fixtureAiOne000000001","data":{"text":"synthetic chat line 9"}}
+{"type":"text_message","entity_type":"ai","entity_id":"fixtureAiOne000000001","data":{"text":"synthetic chat line 10"}}
+{"type":"text_message","entity_type":"ai","entity_id":"fixtureAiOne000000001","data":{"text":"synthetic chat line 11"}}
+{"type":"text_message","entity_type":"ai","entity_id":"fixtureAiOne000000001","data":{"text":"synthetic chat line 12"}}
+{"type":"text_message","entity_type":"ai","entity_id":"fixtureAiOne000000001","data":{"text":"synthetic chat line 13"}}
+{"type":"text_message","entity_type":"ai","entity_id":"fixtureAiOne000000001","data":{"text":"synthetic chat line 14"}}
+{"type":"text_message","entity_type":"ai","entity_id":"fixtureAiOne000000001","data":{"text":"synthetic chat line 15"}}
+{"type":"text_message","entity_type":"ai","entity_id":"fixtureAiOne000000001","data":{"text":"synthetic chat line 16"}}
+{"type":"text_message","entity_type":"ai","entity_id":"fixtureAiOne000000001","data":{"text":"synthetic chat line 17"}}
+{"type":"text_message","entity_type":"ai","entity_id":"fixtureAiOne000000001","data":{"text":"synthetic chat line 18"}}
+{"type":"text_message","entity_type":"ai","entity_id":"fixtureAiOne000000001","data":{"text":"synthetic chat line 19"}}
+{"type":"text_message","entity_type":"ai","entity_id":"fixtureAiOne000000001","data":{"text":"synthetic chat line 20"}}
+{"type":"text_message","entity_type":"ai","entity_id":"fixtureAiOne000000001","data":{"text":"synthetic chat line 21"}}
+{"type":"text_message","entity_type":"ai","entity_id":"fixtureAiOne000000001","data":{"text":"synthetic chat line 22"}}
+{"type":"text_message","entity_type":"ai","entity_id":"fixtureAiOne000000001","data":{"text":"synthetic chat line 23"}}
+{"type":"text_message","entity_type":"ai","entity_id":"fixtureAiOne000000001","data":{"text":"synthetic chat line 24"}}
+{"type":"text_message","entity_type":"ai","entity_id":"fixtureAiOne000000001","data":{"text":"synthetic chat line 25"}}
+{"type":"text_message","entity_type":"ai","entity_id":"fixtureAiOne000000001","data":{"text":"synthetic chat line 26"}}
+{"type":"text_message","entity_type":"ai","entity_id":"fixtureAiOne000000001","data":{"text":"synthetic chat line 27"}}
+{"type":"text_message","entity_type":"ai","entity_id":"fixtureAiOne000000001","data":{"text":"synthetic chat line 28"}}
+{"type":"text_message","entity_type":"ai","entity_id":"fixtureAiOne000000001","data":{"text":"synthetic chat line 29"}}
+{"type":"text_message","entity_type":"ai","entity_id":"fixtureAiOne000000001","data":{"text":"synthetic chat line 30"}}
+{"type":"text_message","entity_type":"ai","entity_id":"fixtureAiOne000000001","data":{"text":"synthetic chat line 31"}}
+{"type":"text_message","entity_type":"ai","entity_id":"fixtureAiOne000000001","data":{"text":"synthetic chat line 32"}}
+{"type":"text_message","entity_type":"ai","entity_id":"fixtureAiOne000000001","data":{"text":"synthetic chat line 33"}}
+{"type":"text_message","entity_type":"ai","entity_id":"fixtureAiOne000000001","data":{"text":"synthetic chat line 34"}}
+{"type":"text_message","entity_type":"ai","entity_id":"fixtureAiOne000000001","data":{"text":"synthetic chat line 35"}}
+{"type":"text_message","entity_type":"ai","entity_id":"fixtureAiOne000000001","data":{"text":"synthetic chat line 36"}}
+{"type":"text_message","entity_type":"ai","entity_id":"fixtureAiOne000000001","data":{"text":"synthetic chat line 37"}}
+{"type":"text_message","entity_type":"ai","entity_id":"fixtureAiOne000000001","data":{"text":"synthetic chat line 38"}}
+{"type":"text_message","entity_type":"ai","entity_id":"fixtureAiOne000000001","data":{"text":"synthetic chat line 39"}}
+{"type":"voice_message","data":{}}
+{"type":"journal_entry","data":{}}
+{"type":"voice_message","data":{}}
+{"type":"journal_entry","data":{}}
+{"type":"voice_message","data":{}}
+{"type":"journal_entry","data":{}}
+{"type":"voice_message","data":{}}
+{"type":"journal_entry","data":{}}
+{"type":"voice_message","data":{}}
+{"type":"journal_entry","data":{}}
+this line is not json

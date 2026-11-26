@@ -19,8 +19,9 @@ const A = require("./lib/address");
 const { Runner } = require("./lib/runtime");
 const { RelayLink } = require("./lib/relay-link");
 const I = require("./lib/installer");
+const IO = require("./public/chario.js");
 
-const VERSION = "1.1.0";
+const VERSION = "1.2.0";
 // Games you add go to APPS_DIR: the games/ folder next to this file when run from the zip, or your data folder in the
 // Windows app (its program folder is replaced on every update). Games that come with the Windows app are read from
 // BUILTIN_DIR; one you add with the same name takes its place.
@@ -159,7 +160,7 @@ function publicState() {
   const rl = [...links.entries()].map(([k, l]) => ({ app: k.split(":")[0], state: l.state, why: l.why || "" }));
   return {
     version: VERSION, apps: appList, lan: lan(), ownRelay: !!ownRelay,
-    settings: { name: s.name, kins: s.kins.map((k) => ({ id: k.id, cid: k.cid, name: k.name, ai_id: k.ai_id, share_code: k.share_code, notes: k.notes, avatar: k.avatar })), currentKin: s.currentKin || (s.kins[0] || {}).id || "", relay: s.relay, ownRelayPort: s.ownRelayPort, askStyle: s.askStyle, welcomeDone: !!s.welcomeDone },
+    settings: { name: s.name, kins: s.kins.map((k) => ({ id: k.id, cid: k.cid, name: k.name, ai_id: k.ai_id, share_code: k.share_code, notes: k.notes, avatar: k.avatar, hasDetails: Object.keys(k.details || {}).length > 0 })), currentKin: s.currentKin || (s.kins[0] || {}).id || "", relay: s.relay, ownRelayPort: s.ownRelayPort, askStyle: s.askStyle, welcomeDone: !!s.welcomeDone },
     games: Object.fromEntries([...apps.keys()].map((slug) => { const g = S.gameKins(s, slug); return [slug, { kins: g.kins.map((k) => k.id), current: g.current, chosen: g.chosen }]; })),
     key: key ? { set: true, hint: "kn_…" + key.slice(-4), protection: S.keyProtection() } : { set: false, protection: S.keyProtection() === "encrypted" ? "locked" : "none" },
     desktop: !!process.versions.electron,
@@ -186,7 +187,7 @@ async function api(req, res, url) {
   if (req.method !== "POST") return json(res, 405, {});
   if (p === "/api/install") return installRoute(req, res);
   if (p === "/api/avatar") return avatarRoute(req, res);
-  const b = await readBody(req);
+  const b = await readBody(req, p === "/api/import" ? 24 * 1024 * 1024 : undefined);
   const app = b.slug ? apps.get(String(b.slug)) : null;
   switch (p) {
     case "/api/settings": {
@@ -227,6 +228,10 @@ async function api(req, res, url) {
         const k = s.kins.find((x) => x.cid === b.cid); if (k) { k.avatar = false; try { fs.unlinkSync(S.avatarFile(k.cid)); } catch {} S.saveSettings(s); }
         return json(res, 200, { ok: true, state: publicState() });
       }
+      if (b.op === "get") {
+        const k = s.kins.find((x) => x.cid === b.cid); if (!k) return json(res, 200, { ok: false, error: "That character is gone." });
+        return json(res, 200, { ok: true, details: k.details || {} });
+      }
       if (b.op === "save") {
         const inK = b.kin || {}, ai = S.cleanAiId(inK.ai_id), problem = S.aiIdProblem(ai);
         if (problem) return json(res, 200, { ok: false, field: "ai_id", error: problem });
@@ -234,7 +239,7 @@ async function api(req, res, url) {
         const old = s.kins.find((x) => x.cid === inK.cid);
         if (s.kins.some((x) => x !== old && x.ai_id === ai)) return json(res, 200, { ok: false, field: "ai_id", error: "Another character already uses that AI ID." });
         if (!old && s.kins.length >= 50) return json(res, 200, { ok: false, error: "That's 50 characters, the most Kin Relay keeps." });
-        const c = S.cleanKin(Object.assign({}, inK, { ai_id: ai, cid: old ? old.cid : "", avatar: old ? old.avatar : false }));
+        const c = S.cleanKin(Object.assign({}, inK, { ai_id: ai, cid: old ? old.cid : "", avatar: old ? old.avatar : false, details: inK.details === undefined && old ? old.details : inK.details }));
         if (old) Object.assign(old, c); else s.kins.push(c);
         if (!s.currentKin) s.currentKin = S.kinAlias(ai);
         S.saveSettings(s);
@@ -242,6 +247,8 @@ async function api(req, res, url) {
       }
       return json(res, 400, { ok: false });
     }
+    case "/api/export": return json(res, 200, exportCharacters(b));
+    case "/api/import": return json(res, 200, await importCharacters(b));
     case "/api/game-kins": {
       if (!app) return json(res, 404, { ok: false });
       const s = S.settings(), ids = new Set(s.kins.map((k) => k.id));
@@ -291,6 +298,55 @@ async function api(req, res, url) {
     }
   }
   return json(res, 404, { ok: false });
+}
+
+// ---------- characters in files ----------
+// Export: the chosen characters (or all) as a Kin Relay file, or a Kin Studio-compatible file. Never holds an API key.
+function exportCharacters(b) {
+  const s = S.settings(), want = Array.isArray(b.cids) && b.cids.length ? new Set(b.cids.map(String)) : null;
+  const chars = s.kins.filter((k) => !want || want.has(k.cid)).map((k) => {
+    let avatar = ""; if (k.avatar) { try { const buf = fs.readFileSync(S.avatarFile(k.cid)); const t = imgType(buf); if (t) avatar = `data:${t};base64,${buf.toString("base64")}`; } catch {} }
+    return { cid: k.cid, name: k.name, ai_id: k.ai_id, share_code: k.share_code, notes: k.notes, details: k.details, avatar };
+  });
+  if (!chars.length) return { ok: false, error: "There are no characters to export." };
+  const studio = b.format === "studio";
+  return { ok: true, count: chars.length, filename: studio ? "kin-studio-characters.json" : "kin-relay-characters.json", file: studio ? IO.toStudioFile(chars) : IO.toRelayFile(chars, "Kin Relay " + VERSION) };
+}
+// Import: the page has already read the file and let you tick characters; this validates again and stores them.
+// items: [{ ai_id, name, share_code, notes, details, avatar (data URL) | avatar_url (Kindroid storage), action: "add" | "update" }]
+async function fetchAvatar(u) {
+  const url = IO.safeAvatarUrl(u); if (!url) return null;
+  try {
+    const r = await fetch(url, { redirect: "error", signal: AbortSignal.timeout(10000), headers: { "user-agent": "KinRelay" } });
+    if (!r.ok) return null;
+    const buf = Buffer.from(await r.arrayBuffer());
+    return buf.length <= 3 * 1024 * 1024 && imgType(buf) ? buf : null;
+  } catch { return null; }
+}
+async function importCharacters(b) {
+  const items = Array.isArray(b.items) ? b.items.slice(0, 60) : [];
+  const s = S.settings(), res = { added: 0, updated: 0, skipped: 0, pictures: 0, problems: [] };
+  for (const it of items) {
+    if (!it || typeof it !== "object") continue;
+    const ai = S.cleanAiId(it.ai_id), problem = S.aiIdProblem(ai);
+    if (problem || /^kn_/i.test(ai)) { res.skipped++; res.problems.push(`${String(it.name || "A character").slice(0, 40)}: ${problem || "not an AI ID"}`); continue; }
+    const old = s.kins.find((x) => x.ai_id === ai);
+    if (old && it.action !== "update") { res.skipped++; continue; }
+    if (!old && s.kins.length >= 50) { res.skipped++; res.problems.push(`${String(it.name || "A character").slice(0, 40)}: Kin Relay keeps at most 50 characters.`); continue; }
+    const fields = { name: it.name, ai_id: ai, share_code: it.share_code, notes: it.notes, details: it.details };
+    let c;
+    if (old) { // an update keeps your notes if the file has none, and details you filled in that the file leaves empty
+      c = S.cleanKin(Object.assign({}, old, fields, { cid: old.cid, notes: it.notes ? it.notes : old.notes, share_code: it.share_code || old.share_code, details: Object.assign({}, old.details, IO.cleanDetails(it.details)), avatar: old.avatar }));
+      Object.assign(old, c); res.updated++;
+    } else { c = S.cleanKin(Object.assign({}, fields, { cid: "", avatar: false })); s.kins.push(c); res.added++; }
+    let buf = null;
+    if (typeof it.avatar === "string" && IO.isDataImage(it.avatar)) { try { buf = Buffer.from(it.avatar.split(",")[1], "base64"); } catch {} }
+    else if (it.avatar_url) buf = await fetchAvatar(it.avatar_url);
+    if (buf && imgType(buf)) { const f = S.avatarFile(c.cid); fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, buf); (old || c).avatar = true; c.avatar = true; res.pictures++; }
+    if (!s.currentKin) s.currentKin = S.kinAlias(ai);
+  }
+  S.saveSettings(s);
+  return Object.assign({ ok: true, state: publicState() }, res);
 }
 
 // A character's picture: the page shrinks it to a small square first; here it is checked to be an image and kept.

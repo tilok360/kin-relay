@@ -1,0 +1,2 @@
+package com.tilok360.kinrelay;
+final class BuildInfo { static final String VERSION = "__VERSION_NAME__"; }

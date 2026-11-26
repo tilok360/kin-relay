@@ -15,6 +15,8 @@ function codeOk(url, env) {
 export default {
   async fetch(req, env) {
     const url = new URL(req.url);
+    // Browsers (the phone and web versions of Kin Relay) ask permission first before posting JSON from another address.
+    if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: { "access-control-allow-origin": "*", "access-control-allow-methods": "POST, GET, OPTIONS", "access-control-allow-headers": "content-type", "access-control-max-age": "86400" } });
     if (url.pathname === "/health") return json({ ok: true, relay: "kin-relay", protocol: 1, host: "cloudflare", code: !!env.RELAY_CODE });
     if (url.pathname === "/" && req.method === "GET") return new Response(`<!doctype html><meta charset="utf-8"><title>Kin Relay</title><body style="font:16px system-ui;background:#120d1f;color:#f3ecff;display:grid;place-items:center;min-height:100vh;margin:0"><main style="max-width:520px;padding:28px;border-radius:18px;background:#2a1d48"><h1>Kin Relay is running</h1><p>Paste this page's address into Kin Relay → Settings → Relay address, and give it to the friends you play with.</p></main>`, { headers: { "content-type": "text/html; charset=utf-8" } });
     if (!codeOk(url, env)) return json({ ok: false, error: "This relay needs its access code (?k=...)." }, 403);

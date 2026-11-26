@@ -1,0 +1,29 @@
+{
+ "format": "kin-relay-characters",
+ "version": 1,
+ "app": "fixture",
+ "exported_at": "2026-11-26T21:58:27.569Z",
+ "characters": [
+  {
+   "name": "Testa",
+   "ai_id": "fixtureAiOne000000001",
+   "share_code": "ABC1x",
+   "notes": "first",
+   "details": {
+    "tagline": "Fixture tagline",
+    "backstory": "Made-up backstory."
+   },
+   "avatar": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
+  },
+  {
+   "name": "Dara",
+   "ai_id": "fixtureAiFour00000004",
+   "share_code": "",
+   "notes": "",
+   "details": {
+    "memory": "Made-up memory."
+   },
+   "avatar": ""
+  }
+ ]
+}

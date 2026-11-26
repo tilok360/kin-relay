@@ -10,14 +10,15 @@
   "use strict";
   const TOKEN = document.querySelector('meta[name="room-token"]').content;
   const ORIGIN = document.querySelector('meta[name="screen-origin"]').content;
-  const slug = decodeURIComponent(location.pathname.split("/").pop());
+  const WEB = !!window.KR; // phone / web version: the game screen is a sandboxed frame without its own web address
+  const slug = WEB ? window.KR.slug() : decodeURIComponent(location.pathname.split("/").pop());
   const $ = (id) => document.getElementById(id);
   const frame = $("screen");
   const H = { "x-room-token": TOKEN, "content-type": "application/json" };
   const api = async (path, body) => (await fetch(path, { method: body ? "POST" : "GET", headers: H, body: body ? JSON.stringify(body) : undefined })).json();
   let state = null, asking = 0, toastT = 0;
   const toast = (t) => { const x = $("toast"); x.textContent = t; x.classList.add("on"); clearTimeout(toastT); toastT = setTimeout(() => x.classList.remove("on"), 5000); };
-  const post = (o) => { try { frame.contentWindow.postMessage(o, ORIGIN); } catch {} };
+  const post = (o) => { try { frame.contentWindow.postMessage(o, WEB ? "*" : ORIGIN); } catch {} };
   const game = () => (state.games && state.games[slug]) || { kins: state.settings.kins.map((k) => k.id), current: state.settings.currentKin };
   const gameKins = () => game().kins.map((id) => state.settings.kins.find((k) => k.id === id)).filter(Boolean);
   // Kindroid sends the Kins attached to the app; here, the characters you chose for this game (all of them unless you chose).
@@ -25,7 +26,7 @@
   const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
   function avatarInto(box, k) {
     box.replaceChildren();
-    if (k && k.avatar) { const i = el("img"); i.src = `/avatars/${k.cid}?t=${TOKEN}`; i.alt = ""; box.append(i); }
+    if (k && k.avatar) { const i = el("img"); i.src = WEB ? window.KR.avatarUrl(k) : `/avatars/${k.cid}?t=${TOKEN}`; i.alt = ""; box.append(i); }
     else box.textContent = k ? k.name.charAt(0).toUpperCase() : "?";
   }
 
@@ -43,7 +44,7 @@
   }
 
   window.addEventListener("message", async (e) => {
-    if (e.source !== frame.contentWindow || e.origin !== ORIGIN) return;
+    if (e.source !== frame.contentWindow || e.origin !== (WEB ? "null" : ORIGIN)) return;
     const m = e.data;
     if (!m || typeof m !== "object" || typeof m.kin !== "string") return;
     const id = m.id;
@@ -84,7 +85,7 @@
   function openPanel() {
     const box = $("kpList"); box.replaceChildren();
     if (!state.settings.kins.length) {
-      const p = el("p", "hint", "You haven't added a Kin yet. Solo games need nothing; to play with your Kin, add one on "); const a = el("a", null, "Characters"); a.href = "/#characters"; p.append(a, document.createTextNode(".")); box.append(p);
+      const p = el("p", "hint", "You haven't added a Kin yet. Solo games need nothing; to play with your Kin, add one on "); const a = el("a", null, "Characters"); a.href = WEB ? window.KR.homeUrl("#characters") : "/#characters"; p.append(a, document.createTextNode(".")); box.append(p);
     }
     const g = game();
     for (const k of state.settings.kins) {
@@ -115,7 +116,7 @@
     state = await api("/api/state");
     const app = renderBar();
     if (!app || !app.screen) { $("title").textContent = "This game has no screen."; return; }
-    frame.src = `${ORIGIN}/apps/${encodeURIComponent(slug)}/${app.screenFile}`;
+    if (WEB) await window.KR.openScreen(frame, slug); else frame.src = `${ORIGIN}/apps/${encodeURIComponent(slug)}/${app.screenFile}`;
     frame.focus();
     setInterval(async () => { if (document.hidden) return; try { const s = await api("/api/state"); const changed = s.relay !== state.relay; state = s; if (changed) renderBar(); } catch {} }, 6000);
   })();

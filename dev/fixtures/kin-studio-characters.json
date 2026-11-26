@@ -1,0 +1,53 @@
+{
+ "format": "kin-voice-helper-v1",
+ "exportedAt": "2026-11-26T21:58:27.569Z",
+ "source": "kin-relay",
+ "characters": [
+  {
+   "id": "kr0",
+   "name": "Testa",
+   "ai_id": "fixtureAiOne000000001",
+   "shareCode": "ABC1x",
+   "tag": "Fixture tagline",
+   "bio": "",
+   "personality": "Made-up backstory.",
+   "greeting": "",
+   "keyMemories": "",
+   "memories": "",
+   "growth": "",
+   "importantFacts": "",
+   "ongoingThreads": "",
+   "directive": "",
+   "example": "",
+   "additional": "",
+   "appearance": "",
+   "descAtelier": "",
+   "face": "",
+   "avatar": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==",
+   "build": "Made-up backstory."
+  },
+  {
+   "id": "kr1",
+   "name": "Dara",
+   "ai_id": "fixtureAiFour00000004",
+   "shareCode": "",
+   "tag": "",
+   "bio": "",
+   "personality": "",
+   "greeting": "",
+   "keyMemories": "Made-up memory.",
+   "memories": "Made-up memory.",
+   "growth": "",
+   "importantFacts": "",
+   "ongoingThreads": "",
+   "directive": "",
+   "example": "",
+   "additional": "",
+   "appearance": "",
+   "descAtelier": "",
+   "face": "",
+   "avatar": "",
+   "build": ""
+  }
+ ]
+}

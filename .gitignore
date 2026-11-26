@@ -17,3 +17,12 @@ games/*/kinrelay-added.json
 
 # Kindroid sample app used by the tests (not ours to publish)
 samples/
+
+# build outputs for the phone and web apps, the Android app and the Mac app
+web-dist/
+android/out/
+android/.work/
+desktop/mac-out/
+desktop/.builder-mac.json
+*.keystore
+*.jks

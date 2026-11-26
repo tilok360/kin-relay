@@ -11,7 +11,10 @@
   let state = null, toastT = 0, avVer = Date.now();
   const toast = (t) => { const x = $("toast"); x.textContent = t; x.classList.add("on"); clearTimeout(toastT); toastT = setTimeout(() => x.classList.remove("on"), 3800); };
   const msg = (id, text, ok) => { const m = $(id); m.textContent = text || ""; m.className = m.className.replace(/\s*\b(ok|bad|busy)\b/g, "") + (text ? (ok === true ? " ok" : ok === false ? " bad" : " busy") : ""); };
-  const avatarUrl = (k) => `/avatars/${k.cid}?t=${TOKEN}&v=${avVer}`;
+  const WEB = !!window.KR; // the phone / web version: same page, answered by kr-web.js instead of the PC's server
+  const avatarUrl = (k) => (WEB ? window.KR.avatarUrl(k) : `/avatars/${k.cid}?t=${TOKEN}&v=${avVer}`);
+  const playUrl = (slug) => (WEB ? window.KR.playUrl(slug) : "/play/" + encodeURIComponent(slug));
+  const where = () => (WEB ? "device" : "PC");
   function avatarEl(k, cls) {
     const d = el("div", "avatar " + (cls || ""));
     if (k && k.avatar) { const i = el("img"); i.src = avatarUrl(k); i.alt = ""; d.append(i); }
@@ -19,6 +22,7 @@
     return d;
   }
 
+  document.body.classList.toggle("web", WEB);
   // ---------- views ----------
   const VIEWS = ["welcome", "games", "characters", "settings"];
   function route() {
@@ -39,7 +43,7 @@
     if (!state.apps.length) { g.append(el("p", "hint", "No games yet. Drop a game's \"Get its code\" file on this window to add it.")); return; }
     for (const a of state.apps) {
       const card = el("article", "game");
-      const img = el("img"); img.src = "/art/" + a.art + ".svg"; img.alt = ""; img.loading = "lazy";
+      const img = el("img"); img.src = (WEB ? "" : "/") + "art/" + a.art + ".svg"; img.alt = ""; img.loading = "lazy";
       const lv = LEVEL[(a.report && a.report.level) || "full"];
       const badge = el("span", "tag level " + lv[0], lv[1]);
       const body = el("div", "body");
@@ -50,7 +54,7 @@
       if (a.tables) tags.append(el("span", "tag tables", "Tables via relay"));
       if (a.builtin) tags.append(el("span", "tag", "Comes with Kin Relay"));
       const b = el("button", "primary play", a.screen ? "Play" : "No screen to open"); b.disabled = !a.screen;
-      b.onclick = () => { location.href = "/play/" + a.slug; };
+      b.onclick = () => { location.href = playUrl(a.slug); };
       b.setAttribute("aria-label", "Play " + a.name);
       const more = el("div", "more");
       const info = el("button", "ghost", "What works here"); info.onclick = () => showReport(a.name, a.report);
@@ -86,7 +90,7 @@
     if (location.hash !== "#games") location.hash = "#games";
     const gm = r.game, nodes = [el("p", null, `Added (${gm.files} files). Nothing in it was run.`), ...reportNodes(gm.report)];
     if (gm.skipped && gm.skipped.length) nodes.push(...list("Left out", gm.skipped.slice(0, 12)));
-    dialog(gm.name + " is ready", nodes, [["Done", null], ["Play now", () => { location.href = "/play/" + gm.slug; }, "primary"]]);
+    dialog(gm.name + " is ready", nodes, [["Done", null], ["Play now", () => { location.href = playUrl(gm.slug); }, "primary"]]);
   }
   $("addGame").onclick = () => $("pickFile").click();
   $("dropzone").onclick = () => $("pickFile").click();
@@ -135,9 +139,31 @@
     $("cCid").value = k ? k.cid : ""; $("cName").value = k ? k.name : ""; $("cAiId").value = k ? k.ai_id : "";
     $("cNotes").value = k ? k.notes || "" : ""; $("cShare").value = k ? k.share_code || "" : "";
     $("cDelete").hidden = !k; msg("charMsg", "");
+    fillDetails(k);
     for (const f of ["cName", "cAiId"]) $(f).removeAttribute("aria-invalid");
     paintPreview(); renderChars();
     if (k) $("cName").focus();
+  }
+  // Profile details (backstory, memories ...). Loaded on demand so the page state stays small.
+  let detailsLoaded = true;
+  const IO = window.KinRelayIO;
+  (function buildDetails() {
+    const box = $("cDetails");
+    for (const [key, label] of IO.FIELDS) {
+      const l = el("label", null, label); l.htmlFor = "cd_" + key;
+      const t = el("textarea"); t.id = "cd_" + key; t.rows = key === "gender" || key === "tagline" ? 1 : 3; t.maxLength = 12000; t.spellcheck = false;
+      box.append(l, t);
+    }
+  })();
+  const readDetails = () => { const d = {}; for (const key of IO.FIELD_KEYS) { const v = $("cd_" + key).value; if (v.trim()) d[key] = v; } return d; };
+  async function fillDetails(k) {
+    for (const key of IO.FIELD_KEYS) $("cd_" + key).value = "";
+    detailsLoaded = !k || !k.hasDetails;
+    $("cDetailsBox").open = false;
+    if (!k || !k.hasDetails) return;
+    const r = await api("/api/character", { op: "get", cid: k.cid });
+    if (editing !== k.cid) return;
+    if (r.ok) { for (const key of IO.FIELD_KEYS) $("cd_" + key).value = (r.details || {})[key] || ""; detailsLoaded = true; }
   }
   function paintPreview() {
     const k = state.settings.kins.find((x) => x.cid === editing);
@@ -177,6 +203,7 @@
     e.preventDefault();
     for (const f of ["cName", "cAiId"]) $(f).removeAttribute("aria-invalid");
     const kin = { cid: $("cCid").value, name: $("cName").value, ai_id: $("cAiId").value, notes: $("cNotes").value, share_code: $("cShare").value };
+    if (detailsLoaded) kin.details = readDetails(); // not sent while still loading, so it can't blank what's saved
     const r = await api("/api/character", { op: "save", kin });
     if (!r.ok) { msg("charMsg", r.error, false); if (r.field) { const f = r.field === "name" ? "cName" : "cAiId"; $(f).setAttribute("aria-invalid", "true"); $(f).focus(); } return; }
     state = r.state;
@@ -192,6 +219,134 @@
     toast(`Saved ${k ? k.name : "your Kin"}.`);
   };
 
+
+  // ---------- import and export ----------
+  const BADGE = (cls, t) => el("span", "badge " + cls, t);
+  function thumb(k) {
+    const d = el("div", "avatar");
+    const src = k.avatar || k.avatar_url;
+    if (src) { const i = el("img"); i.alt = ""; i.loading = "lazy"; i.referrerPolicy = "no-referrer"; i.src = src; i.onerror = () => { i.remove(); d.textContent = (k.name || "?").trim().charAt(0).toUpperCase() || "?"; }; d.append(i); }
+    else d.textContent = (k.name || "?").trim().charAt(0).toUpperCase() || "?";
+    return d;
+  }
+  let imp = null; // { result, rows: [{k, row, box, sel, problem, dup}] }
+  async function startImport(file) {
+    if (!file) return;
+    msg("charMsg", `Reading ${file.name}… (this stays on this ${where()})`, null);
+    let result;
+    try { result = await IO.parseChunks(IO.textPieces(file.stream())); }
+    catch (e) { msg("charMsg", "", null); return dialog("Couldn't read that file", [el("p", null, e && e.message ? e.message : "That file isn't a characters file Kin Relay knows.")], [["OK", null, "primary"]]); }
+    msg("charMsg", "", null);
+    if (!result.kins.length) return dialog("No Kins in that file", [el("p", null, "The file was read, but no characters were found in it.")], [["OK", null, "primary"]]);
+    const have = new Map(state.settings.kins.map((k) => [k.ai_id, k]));
+    const rows = result.kins.map((k) => {
+      const ai = IO.cleanAiId(k.ai_id), problem = IO.aiIdProblem(ai), dup = have.get(ai) || null;
+      return { k, ai, problem, dup, sel: !problem && !dup, action: "skip" };
+    });
+    imp = { result, rows };
+    const bits = [];
+    if (result.format === "kindroid-export") bits.push(`Kindroid data export: ${result.kins.length} Kin${result.kins.length === 1 ? "" : "s"} found.`, `The ${result.ignored.chatMessages.toLocaleString()} chat messages${result.ignored.other ? " and other data" : ""} in the file were not used, and the file never leaves this ${where()}.`);
+    else bits.push(`${result.label}: ${result.kins.length} character${result.kins.length === 1 ? "" : "s"} found.`);
+    bits.push("API keys are never imported.");
+    $("impInfo").textContent = bits.join(" ");
+    $("impFind").value = ""; $("impMsg").textContent = ""; $("impMsg").className = "msg";
+    renderImport(); $("impDlg").showModal();
+  }
+  function renderImport() {
+    const box = $("impList"), q = $("impFind").value.trim().toLowerCase(); box.replaceChildren();
+    for (const r of imp.rows) {
+      const row = el("div", "improw" + (r.problem ? " off" : ""));
+      r.row = row;
+      const cb = el("input"); cb.type = "checkbox"; cb.checked = r.sel; cb.disabled = !!r.problem; cb.setAttribute("aria-label", "Import " + r.k.name);
+      cb.onchange = () => { r.sel = cb.checked; if (r.dup && r.sel && r.action === "skip") { r.action = "update"; renderImport(); } else updCount(); };
+      r.box = cb;
+      const info = el("div"); info.append(el("div", "nm", r.k.name), el("code", null, /^kn_/i.test(r.ai) ? "(looks like an API key)" : r.ai || "(no AI ID)"));
+      const n = Object.keys(r.k.details || {}).length; if (n) info.append(el("div", "why", `${n} profile field${n === 1 ? "" : "s"}${r.k.avatar_url || r.k.avatar ? " + picture" : ""}`));
+      if (r.problem) info.append(el("div", "why", r.problem));
+      const side = el("div");
+      if (r.problem) side.append(BADGE("bad", "Can't import"));
+      else if (r.dup) {
+        side.append(BADGE("dup", "Already here"), document.createTextNode(" "));
+        const sel = el("select"); sel.setAttribute("aria-label", "What to do with " + r.k.name);
+        for (const [v, t] of [["update", "Update it"], ["skip", "Skip it"]]) { const o = el("option", null, t); o.value = v; sel.append(o); }
+        sel.value = r.sel ? "update" : "skip"; if (!r.sel) sel.value = "skip";
+        sel.onchange = () => { r.action = sel.value; r.sel = sel.value === "update"; cb.checked = r.sel; updCount(); };
+        side.append(sel);
+      } else side.append(BADGE("new", "New"));
+      row.append(cb, thumb(r.k), info, side);
+      row.hidden = !!q && !(r.k.name || "").toLowerCase().includes(q);
+      box.append(row);
+    }
+    updCount();
+  }
+  const impChosen = () => imp.rows.filter((r) => r.sel && !r.problem);
+  function updCount() { const n = impChosen().length; $("impCount").textContent = `${n} selected`; $("impGo").textContent = n ? `Import ${n}` : "Import"; $("impGo").disabled = !n; }
+  const setAll = (fn) => { for (const r of imp.rows) { if (r.problem) continue; r.sel = fn(r); if (r.dup) r.action = r.sel ? "update" : "skip"; } renderImport(); };
+  $("impAll").onclick = () => setAll(() => true);
+  $("impNone").onclick = () => setAll(() => false);
+  $("impNew").onclick = () => setAll((r) => !r.dup);
+  $("impFind").oninput = renderImport;
+  $("impCancel").onclick = () => { $("impDlg").close(); imp = null; };
+  $("impGo").onclick = async () => {
+    const chosen = impChosen(); if (!chosen.length) return;
+    $("impGo").disabled = true; msg("impMsg", `Importing ${chosen.length}…`, null);
+    const total = { added: 0, updated: 0, skipped: 0, pictures: 0, problems: [] };
+    try {
+      for (let i = 0; i < chosen.length; i += 8) {
+        const items = chosen.slice(i, i + 8).map((r) => ({ ai_id: r.ai, name: r.k.name, share_code: r.k.share_code, notes: r.k.notes || "", details: r.k.details, avatar: r.k.avatar || "", avatar_url: r.k.avatar_url || "", action: r.dup ? "update" : "add" }));
+        const x = await api("/api/import", { items });
+        if (!x.ok) throw new Error(x.error || "The import failed.");
+        for (const k of ["added", "updated", "skipped", "pictures"]) total[k] += x[k]; total.problems.push(...x.problems); state = x.state;
+        msg("impMsg", `Imported ${Math.min(i + 8, chosen.length)} of ${chosen.length}…`, null);
+      }
+    } catch (e) { msg("impMsg", e.message, false); $("impGo").disabled = false; return; }
+    avVer = Date.now(); $("impDlg").close(); imp = null; renderAll();
+    const parts = []; if (total.added) parts.push(`${total.added} added`); if (total.updated) parts.push(`${total.updated} updated`); if (total.skipped) parts.push(`${total.skipped} skipped`);
+    const nodes = [el("p", null, (parts.join(", ") || "Nothing changed") + "." + (total.pictures ? ` ${total.pictures} picture${total.pictures === 1 ? "" : "s"} saved.` : "") + " No API key was imported.")];
+    if (total.problems.length) nodes.push(...list("Not imported", total.problems.slice(0, 12)));
+    dialog("Import done", nodes, [["Done", null, "primary"]]);
+  };
+  $("impDlg").addEventListener("close", () => { imp = null; });
+  $("importChars").onclick = () => $("importFile").click();
+  $("importFile").onchange = () => { const f = $("importFile").files[0]; $("importFile").value = ""; startImport(f); };
+
+  let expSel = new Set();
+  function openExport() {
+    const kins = state.settings.kins;
+    if (!kins.length) return dialog("Nothing to export", [el("p", null, "Add a Kin first, or import some.")], [["OK", null, "primary"]]);
+    expSel = new Set(kins.map((k) => k.cid)); $("expMsg").textContent = ""; $("expMsg").className = "msg";
+    renderExport(); $("expDlg").showModal();
+  }
+  function renderExport() {
+    const box = $("expList"); box.replaceChildren();
+    for (const k of state.settings.kins) {
+      const row = el("label", "improw"), cb = el("input"); cb.type = "checkbox"; cb.checked = expSel.has(k.cid);
+      cb.onchange = () => { cb.checked ? expSel.add(k.cid) : expSel.delete(k.cid); updExp(); };
+      const info = el("div"); info.append(el("div", "nm", k.name), el("code", null, k.ai_id));
+      row.append(cb, avatarEl(k, ""), info, el("span")); box.append(row);
+    }
+    updExp();
+  }
+  function updExp() { $("expCount").textContent = `${expSel.size} selected`; $("expGo").disabled = !expSel.size; $("expGo").textContent = expSel.size ? `Export ${expSel.size}` : "Export"; }
+  $("expAll").onclick = () => { expSel = new Set(state.settings.kins.map((k) => k.cid)); renderExport(); };
+  $("expNone").onclick = () => { expSel = new Set(); renderExport(); };
+  $("expCancel").onclick = () => $("expDlg").close();
+  $("exportChars").onclick = openExport;
+  $("expGo").onclick = async () => {
+    const fmt = document.querySelector('input[name="expFmt"]:checked').value;
+    const x = await api("/api/export", { cids: [...expSel], format: fmt });
+    if (!x.ok) return msg("expMsg", x.error, false);
+    const blob = new Blob([JSON.stringify(x.file, null, 1)], { type: "application/json" });
+    const how = await saveBlob(blob, x.filename);
+    $("expDlg").close(); toast(how === "shared" ? "Choose where to save it." : `Exported ${x.count} Kin${x.count === 1 ? "" : "s"} to ${x.filename}.`);
+  };
+  // Saves a file: the phone app's own saver, the share sheet where there is one, or an ordinary download.
+  async function saveBlob(blob, name) {
+    if (window.KinRelayNative && window.KinRelayNative.saveFile) return window.KinRelayNative.saveFile(blob, name);
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 30000); return "downloaded";
+  }
+
   // ---------- settings ----------
   function renderSettings(full) {
     const s = state.settings;
@@ -204,7 +359,8 @@
     else if (state.key.protection === "locked") ks.append(el("span", "dot err"), el("span", null, "A saved key can't be unlocked on this Windows account. Paste it again."));
     else ks.append(el("span", "dot"), el("span", null, "No key saved yet. Solo games don't need one."));
     $("apiKey").placeholder = state.key.set ? "Paste a new key to replace the saved one" : "kn_…";
-    $("keyWhere").textContent = state.key.protection === "encrypted"
+    $("keyWhere").textContent = WEB ? "Saved only on this device, in this app's own storage. It's never put in a game, a file you export or a message to another player. Anyone who can unlock this device can use the app, so keep it locked."
+      : state.key.protection === "encrypted"
       ? "Saved only on this PC, encrypted by Windows for your account. It's never put in a game, a file you share or a message to another player."
       : "Saved only on this PC, in your data folder, readable only by your account. It's never put in a game, a file you share or a message to another player.";
     if (full) { $("relay").value = s.relay || ""; $("myName").value = s.name || ""; }

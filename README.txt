@@ -18,6 +18,38 @@ GET IT (WINDOWS, EASIEST)
    don't have one. It opens in your browser instead of its own window. Mac/Linux: run start-kin-relay.sh.
 
 
+GET IT (MAC)
+   Download Kin-Relay-Mac-AppleSilicon.zip (M1 or newer) or Kin-Relay-Mac-Intel.zip:
+      https://github.com/tilok360/kin-relay/releases/latest/download/Kin-Relay-Mac-AppleSilicon.zip
+      https://github.com/tilok360/kin-relay/releases/latest/download/Kin-Relay-Mac-Intel.zip
+   Unzip, drag Kin Relay into Applications. It isn't signed by Apple (that costs money every year), so the
+   first time: right-click Kin Relay > Open > Open. If macOS only offers "Done", open System Settings >
+   Privacy & Security, find "Kin Relay was blocked", click "Open Anyway". If it says "damaged", run this in
+   Terminal:   xattr -cr "/Applications/Kin Relay.app"      It has not been tried on a real Mac yet.
+
+GET IT (ANDROID)
+   Download the app: https://github.com/tilok360/kin-relay/releases/latest/download/Kin-Relay.apk
+   Open it. Android asks to allow "install unknown apps" for the app you opened it from: allow, go back,
+   tap Install. If Play Protect warns, choose "Install anyway". It's not on Google Play. To update, install
+   a newer .apk over it. It only asks for the Internet permission.
+
+GET IT (IPHONE / IPAD)
+   In Safari open https://tilok360.github.io/kin-relay/   Tap Share > Add to Home Screen > Add.
+   Open it from the Home Screen. A Home Screen app keeps its own storage, so set up your key and Kins in it
+   (or move Kins with Characters > Export and Import).
+
+PHONE AND WEB NOTES
+   The games run inside the app, your key stays in the app's storage on the device, and only Kindroid's API
+   and your relay are contacted. Tables work while the app is open. Drag and drop becomes a "Pick file"
+   button. Added games that wait for your Kin in one blocking step don't work there; the four built-in games do.
+
+IMPORT AND EXPORT KINS
+   Characters > Import reads Kindroid's data export (.jsonl), a Kin Relay file or a Kin Studio character file.
+   Chats in the file are ignored. Tick the Kins you want; for ones you already have, choose Update or Skip.
+   API keys are never imported. Characters > Export saves a Kin Relay file (with pictures, never your key) or
+   a Kin Studio file. Keep exported files private: they hold your Kins' profiles.
+
+
 1. FIRST START
    Kin Relay opens on a Welcome page with two short steps for playing with your Kin. Solo games need no setup:
    click "Play solo now" any time.
