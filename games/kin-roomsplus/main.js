@@ -222,7 +222,7 @@ async function loadKins() {
   try { const j = JSON.parse(r.out); list = (Array.isArray(j) ? j : j.kins || []); } catch {
     list = r.out.split("\n").map((l) => { const [id, ...n] = l.split(/\t| {2,}/); return { id, name: n.join(" ") }; });
   }
-  allKins = list.filter((k) => k && k.id).map((k) => ({ id: String(k.id), name: clean(k.name || "Kin", NAME_MAX) }));
+  allKins = list.filter((k) => k && k.id).map((k) => ({ id: String(k.id), name: clean(k.name || "Kin", NAME_MAX), profile: String(k.profile || "").slice(0, 1200) }));
 }
 
 // ---------- sending ----------
@@ -530,36 +530,34 @@ async function tellRoomFailed(k, why) {
   if (cfg.mode === "host") await systemNote(line);
   else if (cfg.mode === "member" && cfg.joined) enqueue(cfg.hostAddr, { t: "kinerr", kinId: k.id, text: clean(why, 200) });
 }
-// Free mode: the host picks ONE Kin per burst of messages. A Kin named with @ goes first (and alone; the
-// earliest message with a mention wins); otherwise the next Kin in rotation among those opted into auto-replies.
-async function krReplies(entries) {
-  const last = entries[entries.length - 1];
-  if (last.kind === "kin" && (room.chain || 0) + typingNow().length >= 3) return; // 3 Kin lines in a row, counting the ones already on their way
-  const cand = roomKins().filter((k) => k.auto === true && k.id !== last.kinId && now() - ((room.kinLast || {})[k.id] || 0) > 5000);
-  if (!cand.length) return;
-  const asked = [];
-  for (const e of entries) for (const k of cand) if (e.kinId !== k.id && mentions(k.name, e.text) && !asked.includes(k)) asked.push(k);
-  let picks = [];
-  if (asked.length) picks = asked.slice(0, 2); // the Kins spoken to answer first (one or two)
-  else {
-    const i0 = (room.freeIdx || 0) % cand.length;
-    const rot = cand.map((_, j) => cand[(i0 + j) % cand.length]);
-    if (last.kind === "person") {
-      const toAll = /\b(everyone|everybody|y'all|you all|guys|you two|both of you|anyone)\b|\?\s*$/i.test(last.text);
-      picks = rot.slice(0, toAll && rot.length > 1 && pickRand(last.id, 0.6) ? 2 : 1);
-    } else if (pickRand(last.id, KR_CHAIN)) picks = rot.slice(0, 1); // a Kin's line sometimes draws a reply from another Kin
-    if (picks.length) room.freeIdx = (i0 + picks.length) % cand.length;
-  }
-  for (const k of picks) {
-    if (k.owner !== cfg.myId) { setTyping(k.id, k.name, true); for (const [, m] of inMembers()) enqueue(m.addr, { t: "typing", kinId: k.id, who: k.name, on: true, until: now() + TYPING_MS }); }
-    await giveTurn(k, true);
-    if (k.owner !== cfg.myId) await flush(true);
-  }
-  await saveRoom();
+// Free mode in Kin Relay: the conductor (kr-conductor.js, the same one every Kin Relay table uses) picks ONE next speaker, or
+// nobody, after each line: spoken-to Kins first (@Name, "Name," ...; "@all" one after another), else by relevance, who has been
+// quiet longest and personality. Only one Kin generates at a time, after a short natural pause, and a follow-up must come from
+// a different Kin (3 Kin lines in a row at most). A guest's Kin is asked through that guest's own copy and key.
+const COND = KR ? require("./kr-conductor.js") : null;
+const cond = KR ? COND.create({ maxChain: 3, kinGapMs: 5000, asksPerMin: 14, busyTtlMs: 120000, delayScale: Number.isFinite(Number(process.env.KGR_CHAT_DELAY)) && process.env.KGR_CHAT_DELAY !== "" ? Number(process.env.KGR_CHAT_DELAY) : 1 }) : null;
+const condState = () => (room.cond = cond.norm(room.cond));
+const condKins = () => roomKins().map((k) => { const mine = k.owner === cfg.myId ? allKins.find((x) => x.id === k.id) : null; return { id: k.id, name: k.name, owner: k.owner, profile: mine ? mine.profile : "", auto: k.auto === true }; });
+const roomPeople = () => [cfg.name].concat(inMembers().map(([, m]) => m.name)).filter(Boolean);
+async function krDrive() {
+  if (!KR || cfg.mode !== "host" || !room || room.turnMode !== "free") return;
+  const st = condState();
+  if (room.paused || (!recentPerson() && !st.busy)) { st.pending = false; return; } // nobody is here: no Kin request (saves credits on Kindroid too)
+  const r = await cond.drive(st, { kins: condKins, ctx: () => ({ people: roomPeople(), paused: room.paused }), maxSleep: 3000,
+    ask: async (k, job) => {
+      if (k.owner === cfg.myId) { await kinTurn(k.id, "", true); return { local: true }; }
+      const m = room.members[k.owner]; if (!m || m.status !== "in") return {};
+      setTyping(k.id, k.name, true); for (const [, mm] of inMembers()) enqueue(mm.addr, { t: "typing", kinId: k.id, who: k.name, on: true, until: now() + TYPING_MS });
+      enqueue(m.addr, { t: "turn", kinId: k.id, autoPost: true, id: job });
+      await flush(true); return { remote: true };
+    } });
+  cfg.talkUntil = r.until || 0; await saveRoom();
 }
+// A guest's copy finished a request without a line (or after one): free the table for the next speaker.
+function talkOver(job) { if (!room) return; const st = condState(); if (st.busy && st.busy.job === job) cond.done(st, job, { ok: false }); }
 async function freeReplies(entries) {
   if (cfg.mode !== "host" || room.turnMode !== "free" || room.paused) return;
-  if (KR) return krReplies(entries);
+  if (KR) return;
   const esc = (n) => n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const all = roomKins();
   // On Kindroid only a person's message starts a reply, so Kins cannot chain.
@@ -605,15 +603,11 @@ async function hostPost(m) {
   const wire = { ...entry, hasAudio: !!entry.audio }; delete wire.audio;
   for (const [id, mm] of inMembers()) enqueue(mm.addr, { t: "msg", m: wire, lid: id === m.owner ? m.lid : undefined });
   // The reply waits in room.replyDue, so several messages in a row get one Kin reply (processReplyDue).
-  if (KR) { room.chain = m.kind === "person" ? 0 : m.kind === "kin" ? (room.chain || 0) + 1 : room.chain || 0; if (m.kind === "kin") { (room.kinLast = room.kinLast || {})[m.kinId] = now(); setTyping(m.kinId, "", false); } }
-  if (KR && m.kind === "kin" && (room.chain || 0) < 3 && !room.paused && room.turnMode === "free") {
-    // A Kin's line can start another Kin's reply (a conversation), up to 3 Kin lines in a row.
-    const ids = room.replyDue && Array.isArray(room.replyDue.ids) ? room.replyDue.ids : [];
-    room.replyDue = { ids: ids.concat(entry.id).slice(-10) };
-  }
+  if (KR && m.kind === "kin") setTyping(m.kinId, "", false);
+  if (KR && room.turnMode === "free" && !room.paused && (m.kind === "person" || m.kind === "kin")) cond.note(condState(), { id: entry.id, who: entry.who, kind: m.kind, speaker: m.kinId || "", text: entry.text, ts: entry.ts }, condKins());
   if (m.kind === "person") {
     humanThisRun = true;
-    if (!room.paused && room.turnMode !== "pick") {
+    if (!room.paused && room.turnMode !== "pick" && !(KR && room.turnMode === "free")) { // (Kin Relay free mode: the conductor decides)
       const ids = room.replyDue && Array.isArray(room.replyDue.ids) ? room.replyDue.ids : [];
       room.replyDue = { ids: ids.concat(entry.id).slice(-10) };
     }
@@ -727,7 +721,8 @@ async function hostGot(p) {
       if (x && x.owner === from && (x.kind === "person" || x.kind === "kin")) { const t2 = clean(ev.text); if (t2 && !explicit(t2)) { x.text = t2; x.edited = true; await saveLog(); broadcast({ t: "edit", mid: x.id, text: x.text }); } }
     }
     else if (KR && ev.t === "typing") { const k = (m.kins || []).find((x) => x.id === clean(ev.kinId, 80)); if (k) { setTyping(k.id, k.name, ev.on === true); for (const [id, mm] of inMembers()) if (id !== from) enqueue(mm.addr, { t: "typing", kinId: k.id, who: k.name, on: ev.on === true, until: now() + TYPING_MS }); } }
-    else if (KR && ev.t === "kinerr") { const k = (m.kins || []).find((x) => x.id === clean(ev.kinId, 80)); if (k) { setTyping(k.id, k.name, false); await systemNote(`${k.name} couldn't answer: ${clean(ev.text, 200)}`); } }
+    else if (KR && ev.t === "kinerr") { const k = (m.kins || []).find((x) => x.id === clean(ev.kinId, 80)); if (k) { setTyping(k.id, k.name, false); if (clean(ev.text, 200)) await systemNote(`${k.name} couldn't answer: ${clean(ev.text, 200)}`); } }
+    else if (KR && ev.t === "talkdone") { const k = (m.kins || []).find((x) => x.id === clean(ev.kinId, 80)); if (k) setTyping(k.id, k.name, false); talkOver(String(ev.job || "")); }
     else if (ev.t === "leave") { m.status = "left"; await systemNote(`${m.name} left.`); shareState(); }
     else if (ev.t === "kins") { m.kins = (Array.isArray(ev.kins) ? ev.kins : []).slice(0, 2).map((k) => ({ id: clean(k.id, 80), name: clean(k.name, NAME_MAX) || "Kin", auto: k.auto === true })); shareState(); }
     else if (ev.t === "msg") {
@@ -806,8 +801,8 @@ async function memberGot(p) {
     else if (ev.t === "turn") {
       if (ev.id) { if (seenCtl.includes(String(ev.id))) continue; seenCtl.push(String(ev.id)); if (seenCtl.length > 100) seenCtl.shift(); }
       const k = myKins().find((x) => x.id === String(ev.kinId));
-      if (k) await kinTurn(k.id, "", ev.autoPost === true);
-      else note = "The host selected a Kin that is not in your room.";
+      if (k) { await kinTurn(k.id, "", ev.autoPost === true); if (KR && ev.id && cfg.mode === "member") enqueue(cfg.hostAddr, { t: "talkdone", kinId: k.id, job: String(ev.id) }); }
+      else { note = "The host selected a Kin that is not in your room."; if (KR && ev.id && cfg.mode === "member") enqueue(cfg.hostAddr, { t: "talkdone", kinId: String(ev.kinId), job: String(ev.id) }); }
     }
     else if (ev.t === "rotate") { cfg.prevPw = cfg.pw; cfg.prevUntil = now() + 10 * 60000; const nk = String(ev.pw || ""); if (/^[0-9a-f]{64}$/.test(nk)) { cfg.pw = nk; note = "The host changed the room key."; } }
     else if (ev.t === "error") { note = clean(ev.text, 200); if (ev.lid) { pending = pending.filter((x) => x.lid !== ev.lid); pendingOoc = pendingOoc.filter((x) => x.lid !== ev.lid); } }
@@ -1179,7 +1174,7 @@ process.on("uncaughtException", (e) => { note = "Error: " + String((e && e.messa
 // ---------- main loop ----------
 async function tick() {
   if (busy) return; busy = true;
-  try { await readCmds(); await readInbox(); await processReplyDue(); await processSelfieJobs(); await tellKins(false); await saveCfg(); presence(); if (Object.values(outq).some((q) => q.length)) lastActive = Math.max(lastActive, now() - 60000); await flush(false); await writeView(); }
+  try { await readCmds(); await readInbox(); await processReplyDue(); await krDrive(); await processSelfieJobs(); await tellKins(false); await saveCfg(); presence(); if (Object.values(outq).some((q) => q.length)) lastActive = Math.max(lastActive, now() - 60000); await flush(false); await writeView(); }
   catch (e) { note = "Error: " + String(e.message || e).slice(0, 160); }
   busy = false;
 }
@@ -1196,6 +1191,7 @@ function nextWake() {
   if (cfg.mode === "host" && inMembers().length && !sleeping) for (const [, m] of inMembers()) times.push((lastSent[m.addr] || 0) + hbGap());
   if (cfg.mode === "host" && room && room.replyDue && !room.paused && recentPerson() && roomKins().some((k) => k.auto === true)) times.push((room.lastAutoAt || 0) + AUTO_GAP);
   if (KR && typingNow().length) times.push(now() + 3000);
+  if (KR && cfg.mode === "host" && room && room.turnMode === "free" && !room.paused && recentPerson() && cond.pending(room.cond)) times.push(Math.max(now() + 1500, cfg.talkUntil || 0)); // a Kin is about to speak, or a guest's Kin is answering
   const jobs = Array.isArray(cfg.selfieJobs) ? cfg.selfieJobs : [];
   if (jobs.some((j) => now() - (Number(j.at) || now()) <= SELFIE_MAX_MS)) times.push(now() + 15000);
   return times.length ? Math.max(now() + 1000, Math.min(...times)) : 0;

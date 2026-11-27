@@ -110,7 +110,7 @@ async function loadKins() {
   let list = [];
   try { const j = JSON.parse(r.out); list = Array.isArray(j) ? j : j.kins || []; }
   catch { list = r.out.split("\n").map((l) => { const [id, ...n] = l.split(/\t| {2,}/); return { id, name: n.join(" ") }; }); }
-  allKins = list.filter((k) => k && k.id).map((k) => ({ id: String(k.id), name: clean(k.name || "Kin", NAME_MAX) }));
+  allKins = list.filter((k) => k && k.id).map((k) => ({ id: String(k.id), name: clean(k.name || "Kin", NAME_MAX), profile: String(k.profile || "").slice(0, 1200) }));
 }
 
 // ---------- sending ----------
@@ -197,53 +197,56 @@ async function tablePost(m) {
   const e = { id: rid(6), ts: now(), who: clean(m.who, NAME_MAX), owner: m.owner || "", kind: m.kind, text: clean(m.text) };
   chat.push(e); await saveChats();
   for (const [id, mm] of inMembers()) enqueue(mm.addr, { t: "chat", m: e, lid: id === m.owner ? m.lid : undefined });
-  if (KR) await krTalk(e); else if (m.kind === "person") await mentions(e);
+  if (KR) { if (cfg.mode === "host" && T) krNote(e); } else if (m.kind === "person") await mentions(e);
 }
 // ----- Kin Relay group conversation -----
 const krTyping = () => { const t = (T.typing = T.typing || {}); for (const n of Object.keys(t)) if (now() - t[n] > KR_TYPING_MS) delete t[n]; return t; };
-function krNamed(name, text) {
-  const esc = (n) => n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), fw = String(name).trim().split(/\s+/)[0] || "";
-  if (new RegExp("(^|[^\\w])@?" + esc(name) + "(?![\\w])", "i").test(text)) return true;
-  return fw.length >= 3 && new RegExp("(^|[^\\w])@?" + esc(fw) + "(?![\\w])", "i").test(text);
-}
 async function krFail(name, reason) {
   T.krErrAt = T.krErrAt || {}; if (now() - (T.krErrAt[name] || 0) < 60000) return; T.krErrAt[name] = now();
   await dealerSay(`${name} couldn't answer: ${clean(reason || "no reply came back", 160)}`);
 }
-async function krTalk(e) {
+// The conductor (kr-conductor.js, the same one every Kin Relay table uses) picks ONE next speaker, or nobody, after each
+// line: spoken-to Kins first (@Name, "Name," ...; "@all" one after another), else by relevance, who has been quiet longest
+// and personality. Only one Kin generates at a time, after a short natural pause, and a follow-up must come from a different Kin.
+const COND = KR ? require("./kr-conductor.js") : null;
+const cond = KR ? COND.create({ maxChain: KR_MAX_RUN, kinGapMs: 20000, asksPerMin: 8, busyTtlMs: 120000, delayScale: Number.isFinite(Number(process.env.KGR_CHAT_DELAY)) && process.env.KGR_CHAT_DELAY !== "" ? Number(process.env.KGR_CHAT_DELAY) : 1 }) : null;
+const condState = () => (T.cond = cond.norm(T.cond));
+const condKins = () => T.seats.filter((s) => s.kind === "kin").map((s) => { const k = s.owner === cfg.myId ? allKins.find((x) => x.id === s.kinId) : null; return { id: s.id, name: s.name, owner: s.owner, profile: k ? k.profile : "", auto: true }; });
+const tablePeople = () => T.seats.filter((s) => s.kind !== "kin" && s.kind !== "bot").map((s) => s.name);
+function krNote(e) { // a line was posted at the host's table: tell the conductor
   if (e.kind === "dealer") return;
-  const typing = krTyping();
-  if (e.kind === "kin") { delete typing[e.who]; T.krChain = (T.krChain || 0) + 1; } else T.krChain = 0;
-  const busy = Object.keys(typing).length;
-  if (T.krChain + busy >= KR_MAX_RUN) return;
-  const seats = T.seats.filter((s) => s.kind === "kin" && s.name !== e.who && !typing[s.name]);
-  if (!seats.length) return;
-  let pick = seats.filter((s) => krNamed(s.name, e.text)).slice(0, 2);
-  if (!pick.length) {
-    if (e.kind === "kin" && rnd() >= KR_CHAIN) return;
-    const n = e.kind === "person" && /\?|\b(everyone|everybody|all of you|you all|y'all|guys)\b/i.test(e.text) ? 2 : 1;
-    const last = T.kinLast || {};
-    pick = seats.map((s) => [s, (last[s.id] || 0) + rnd() * 1000]).sort((a, b) => a[1] - b[1]).map((x) => x[0]).slice(0, n);
-  }
-  pick = pick.slice(0, Math.max(0, KR_MAX_RUN - T.krChain - busy));
-  for (const s of pick) await krSpeak(s, e);
+  const sk = e.kind === "kin" ? T.seats.find((s) => s.kind === "kin" && s.owner === e.owner && s.name === e.who) : null;
+  if (e.kind === "kin") delete krTyping()[e.who];
+  cond.note(condState(), { id: e.id, who: e.who, kind: e.kind, speaker: sk ? sk.id : "", text: e.text, ts: e.ts }, condKins());
 }
-async function krSpeak(s, e) {
-  const typing = krTyping(); (T.kinLast = T.kinLast || {})[s.id] = now();
-  const toIt = krNamed(s.name, e.text);
-  if (s.owner !== cfg.myId) { // a guest's Kin answers on its own person's copy, with their key
-    const m = T.members[s.owner]; if (!m || m.status !== "in") return;
-    typing[s.name] = now(); enqueue(m.addr, { t: "mention", kr: true, from: e.who, to: toIt, chatTail: recentChat(12) }); shareState(); await writeView(); await flush(true); return;
-  }
-  if (kinUsed() >= kinCap()) return krFail(s.name, `its limit of ${kinCap()} Kin requests an hour at this table is used up (Settings)`);
-  const k = allKins.find((x) => x.id === s.kinId) || { id: s.kinId, name: s.name };
-  typing[s.name] = now(); shareState(); await writeView(); await flush(true);
-  const line = await kinChatLine(k, `${e.who}${e.kind === "kin" ? " (a Kin)" : ""} just said something in the table chat${toIt ? " to you" : ""}. Answer naturally, like a friend at the table.`);
-  delete krTyping()[s.name];
-  if (line && (T.krChain || 0) < KR_MAX_RUN) await tablePost({ who: s.name, owner: cfg.myId, kind: "kin", text: line });
-  else if (!line && krErr) await krFail(s.name, krErr);
-  shareState(); await writeView();
+async function drainTalk() {
+  if (!KR || cfg.mode !== "host" || !T) return;
+  const st = condState(); let fatal = false;
+  const r = await cond.drive(st, { kins: condKins, ctx: () => ({ people: tablePeople() }), maxSleep: 3000,
+    ask: async (k, job, p) => {
+      const s = seatOf(k.id); if (!s) return {};
+      const e = p.last, toIt = p.addressed, why = p.why || `${e.who}${e.kind === "kin" ? " (a Kin)" : ""} just said something in the table chat${toIt ? " to you" : ""}. Answer naturally, like a friend at the table.`;
+      const typing = krTyping();
+      if (s.owner !== cfg.myId) { // a guest's Kin answers on its own person's copy, with their key
+        const m = T.members[s.owner]; if (!m || m.status !== "in") return {};
+        typing[s.name] = now(); enqueue(m.addr, { t: "mention", kr: true, job, from: e.who, to: toIt, chatTail: recentChat(12) }); shareState(); await writeView(); await flush(true);
+        return { remote: true };
+      }
+      if (kinUsed() >= kinCap()) { await krFail(s.name, `its limit of ${kinCap()} Kin requests an hour at this table is used up (Settings)`); fatal = true; return { local: true }; }
+      const k2 = allKins.find((x) => x.id === s.kinId) || { id: s.kinId, name: s.name };
+      typing[s.name] = now(); shareState(); await writeView(); await flush(true);
+      const line = await kinChatLine(k2, why);
+      delete krTyping()[s.name];
+      if (line) await tablePost({ who: s.name, owner: cfg.myId, kind: "kin", text: line });
+      else if (krErr) await krFail(s.name, krErr);
+      shareState(); await writeView();
+      return { local: true };
+    } });
+  if (fatal) { st.owed = []; st.pending = false; }
+  cfg.talkUntil = r.until || 0; await saveTable();
 }
+// A guest's copy said it has no line: free the table for the next speaker.
+function talkOver(from) { const st = condState(); if (st.busy && st.busy.owner === from) cond.done(st, st.busy.job, { ok: false }); }
 const dealerSay = (text) => tablePost({ who: MANATEE, kind: "dealer", text });
 async function oocPost(m) {
   const e = { id: rid(6), ts: now(), who: clean(m.who, NAME_MAX), owner: m.owner, kind: "person", text: clean(m.text) };
@@ -615,7 +618,7 @@ async function hostGot(p) {
       else if (ev.t === "kinSay") { const s = seatOf("k:" + from); if (s) await tablePost({ who: s.name, owner: from, kind: "kin", text }); }
       else await tablePost({ who: m.name, owner: from, kind: "person", lid: ev.lid, text });
     }
-    else if (KR && ev.t === "kinerr") { const s = seatOf("k:" + from); if (s) { delete krTyping()[s.name]; if (ev.text) await krFail(s.name, clean(ev.text, 160)); shareState(); } }
+    else if (KR && ev.t === "kinerr") { const s = seatOf("k:" + from); if (s) { delete krTyping()[s.name]; talkOver("" + from); if (ev.text) await krFail(s.name, clean(ev.text, 160)); shareState(); } }
     else if (ev.t === "kin") {
       const k = ev.kin && ev.kin.id ? { id: clean(ev.kin.id, 80), name: clean(ev.kin.name, NAME_MAX) || "Kin" } : null;
       m.kin = k; await setKinSeat(from, k); shareState();
@@ -659,6 +662,7 @@ async function memberGot(p) {
       const k = myKin(); if (!k || !cfg.kinTalk) continue;
       cfg.chatTail = clean(ev.chatTail, 3000);
       if (KR && ev.kr) {
+        if (!cond.claim((cfg.cond = cond.norm(cfg.cond)), ev.job)) continue; // a request that was delivered twice answers once
         const line = await kinChatLine(k, `${clean(ev.from, NAME_MAX)} just said something in the table chat${ev.to ? " to you" : ""}. Answer naturally, like a friend at the table.`);
         if (line) { const lid = rid(6); pendingChat.push({ lid, who: k.name, text: line }); enqueue(cfg.hostAddr, { t: "kinSay", lid, text: line }); }
         else enqueue(cfg.hostAddr, { t: "kinerr", text: krErr });
@@ -881,7 +885,7 @@ async function writeView() {
   const mine = host ? mineFor(cfg.myId) : cfg.mine && pub && cfg.mine.round === pub.round ? cfg.mine : cfg.mine;
   const v = {
     mode: cfg.mode, joined: !!cfg.joined, joinStage: cfg.joinStage || "", joinError: cfg.joinError || "", me: { id: cfg.myId, name: cfg.name }, note, hasAddress: !!myAddr,
-    kins: allKins, kinId: cfg.kinId, kinIds: cfg.kinIds || [], kinTalk: cfg.kinTalk !== false, drafts: (cfg.drafts || []).map((d) => ({ id: d.id, name: d.name, text: d.text, from: d.from })), table: cfg.mode === "off" ? null : pub, mine,
+    kins: allKins.map((k) => ({ id: k.id, name: k.name })), kinId: cfg.kinId, kinIds: cfg.kinIds || [], kinTalk: cfg.kinTalk !== false, drafts: (cfg.drafts || []).map((d) => ({ id: d.id, name: d.name, text: d.text, from: d.from })), table: cfg.mode === "off" ? null : pub, mine,
     chat: chat.slice(-CHAT_VIEW), ooc: ooc.slice(-CHAT_VIEW), pendingChat, pendingOoc, online: host ? null : (hostSeen ? now() - hostSeen < ONLINE_MS : null),
     budget: { sentThisHour: budget.hour, sentToday: budget.day, queued: Object.values(outq).reduce((a, q) => a + q.length, 0) }, alive: Math.floor(now() / 20000),
     kinUse: { used: kinUsed(), cap: kinCap() }, asleep: idle(),
@@ -907,7 +911,7 @@ process.on("unhandledRejection", (e) => { note = "Error: " + String((e && e.mess
 async function tick() {
   // A missing lastUse is not "just now": a first run or a self-wake must not look like someone is here.
   await readCmds(); await readInbox();
-  if (cfg.mode === "host") await timeouts();
+  if (cfg.mode === "host") { await drainTalk(); await timeouts(); await drainTalk(); }
   presence(); await flush(false); await writeView();
   if (cfg.mode !== "off") await tellKins(false);
   await saveCfg(); // keeps this hour's Kin request count (written only if it changed)
@@ -915,6 +919,7 @@ async function tick() {
 function nextWake() {
   if ((cfg.quietWakes || 0) >= MAX_QUIET_WAKES) return 0; // many self-wakes in a row with nobody using it: the chain ends
   const times = [];
+  if (KR && cfg.mode === "host" && T && cond.pending(T.cond)) times.push(Math.max(now() + 1500, cfg.talkUntil || 0)); // a Kin is about to speak, or a guest's Kin is answering
   for (const addr of Object.keys(outq)) if (outq[addr] && outq[addr].length) times.push(Math.max(now() + 1000, (lastSent[addr] || 0) + BASE_GAP, backoff[addr] || 0));
   const sleeping = idle();
   if (cfg.mode === "member" && cfg.joined && !sleeping) times.push((lastSent[cfg.hostAddr] || 0) + hbGap());

@@ -184,7 +184,7 @@ var rf=window.fetch;window.fetch=function(u){var k=typeof u==="string"?key(u):nu
   async function envFor(slug) {
     const g = S.gameKins(cfg, slug), addrs = {};
     if (cfg.relay && apps.get(slug).inbound.length) for (const [id, sec] of Object.entries(await relaySecrets(slug))) addrs[id] = A.make(cfg.relay, boxOf(sec));
-    return { kins: g.kins.map((k) => ({ id: k.id, name: k.name })), current: g.current, addrs, player: cfg.name || "" };
+    return { kins: g.kins.map((k) => ({ id: k.id, name: k.name, profile: S.kinProfile(k) })), current: g.current, addrs, player: cfg.name || "" };
   }
   class WebRunner {
     constructor(app) { this.app = app; this.chain = Promise.resolve(); this.bgQueued = false; this.wakeTimer = null; this.active = null; }

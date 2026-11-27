@@ -107,7 +107,7 @@ async function loadKins() {
   let list = [];
   try { const j = JSON.parse(r.out); list = Array.isArray(j) ? j : j.kins || []; }
   catch { list = r.out.split("\n").map((l) => { const [id, ...n] = l.split(/\t| {2,}/); return { id, name: n.join(" ") }; }); }
-  allKins = list.filter((k) => k && k.id).map((k) => ({ id: String(k.id), name: clean(k.name || "Kin", NAME_MAX) }));
+  allKins = list.filter((k) => k && k.id).map((k) => ({ id: String(k.id), name: clean(k.name || "Kin", NAME_MAX), profile: String(k.profile || "").slice(0, 1200) }));
 }
 
 // ---------- sending (as in kin-roomsPlus) ----------
@@ -199,7 +199,7 @@ async function tablePost(m) {
   if (cfg.mode === "host" && T) {
     if (m.kind === "person") { T.chain = 0; T.chainSeats = []; }
     else if (m.kind === "kin") { T.chain = (T.chain || 0) + 1; T.chainSeats = (T.chainSeats || []).concat(m.seat || "").slice(-6); T.spoke = T.spoke || {}; if (m.seat) T.spoke[m.seat] = now(); }
-    if (m.kind === "person" || m.kind === "kin") converse({ who: e.who, kind: m.kind, text: e.text, seat: m.seat || "" });
+    if (m.kind === "person" || m.kind === "kin") cond.note(condState(), { id: e.id, who: e.who, kind: m.kind, speaker: m.seat || "", text: e.text, ts: e.ts }, condKins());
   }
 }
 const dealerSay = (text) => tablePost({ who: "Dealer", kind: "dealer", text });
@@ -265,58 +265,16 @@ async function kinDecide(k, turn) {
 const MAX_CHAIN = 3, KIN_GAP_MS = 20000, TABLE_ASKS_PER_MIN = 8, TALK_BUDGET_MS = 100000, JOB_TTL_MS = 180000, BANTER_GAP_MS = 90000, REMOTE_TYPING_MS = 120000;
 const reEsc = (n) => String(n).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const kinSeats = () => (T ? T.seats.filter((s) => s.kind === "kin") : []);
-// A Kin's name and its first name ("Earl" for Earl "Gator" Vance) when no other Kin at the table shares it.
-function nameParts(s) {
-  const first = (String(s.name).match(/[A-Za-z\u00C0-\u024F][\w'\u00C0-\u024F-]{2,}/) || [""])[0];
-  const clash = first && kinSeats().some((x) => x.id !== s.id && new RegExp("(^|[^\\w])" + reEsc(first) + "(?![\\w])", "i").test(x.name));
-  return [String(s.name)].concat(first && first.toLowerCase() !== String(s.name).toLowerCase() && !clash ? [first] : []);
-}
-// 2 = spoken to (@Name, or Name, / Name: / Name? at the start), 1 = named in passing, 0 = not mentioned.
-function addressedBy(text, s) {
-  let best = 0;
-  for (const n of nameParts(s).map(reEsc)) {
-    if (new RegExp("(^|[^\\w])@" + n + "(?![\\w])", "i").test(text)) return 2;
-    if (new RegExp("^\\s*(?:(?:hey|hi|yo|ok|okay|so|well|and|thanks|thank you)[,\\s]+)?" + n + "\\s*[,:?!]", "i").test(text)) return 2;
-    if (new RegExp("(^|[^\\w])" + n + "(?![\\w])", "i").test(text)) best = 1;
-  }
-  return best;
-}
-function pickSpeakers(e) {
-  const seats = kinSeats().filter((s) => s.id !== e.seat);
-  if (!seats.length) return [];
-  const chain = T.chain || 0;
-  if (e.kind === "kin" && chain >= MAX_CHAIN) return [];
-  const spoke = T.spoke || {}, rest = (a, b) => (spoke[a.id] || 0) - (spoke[b.id] || 0), inChain = T.chainSeats || [];
-  const room = Math.min(3, MAX_CHAIN - (e.kind === "kin" ? chain : 0));
-  let picks = [];
-  if (/(^|[^\w])@(all|everyone|everybody|kins|table)(?![\w])/i.test(e.text)) picks = seats.slice().sort(rest);
-  else {
-    const spokenTo = seats.filter((s) => addressedBy(e.text, s) === 2).sort(rest);
-    picks = spokenTo.length ? spokenTo : seats.filter((s) => addressedBy(e.text, s) === 1 && !inChain.includes(s.id)).slice(0, 1);
-  }
-  if (!picks.length) {
-    // Nobody named: one Kin who has been quiet longest. A Kin's reply to a Kin carries on for one more line, not forever.
-    if (e.kind === "kin" && chain >= 2) return [];
-    const t = now();
-    picks = seats.filter((s) => !inChain.includes(s.id) && t - (spoke[s.id] || 0) > KIN_GAP_MS).sort(rest).slice(0, 1);
-  }
-  return picks.slice(0, Math.max(0, room));
-}
-function converse(e, why) {
-  if (cfg.mode !== "host" || !T || !e.text) return;
-  const picks = e.pick ? [e.pick] : pickSpeakers(e);
-  if (!picks.length) return;
-  const t = now(); T.askTimes = (T.askTimes || []).filter((x) => t - x < 60000);
-  cfg.talkQ = Array.isArray(cfg.talkQ) ? cfg.talkQ : [];
-  for (const s of picks) {
-    const addressed = addressedBy(e.text, s) === 2;
-    if (cfg.talkQ.some((j) => j.seat === s.id)) continue;
-    if (!addressed && !e.pick && T.askTimes.length >= TABLE_ASKS_PER_MIN) { note = "The Kins are pacing themselves so Kindroid's rate limit isn't hit."; continue; }
-    T.askTimes.push(t);
-    cfg.talkQ.push({ seat: s.id, kinId: s.kinId, owner: s.owner, ts: t, why: why || `${e.who} just ${e.kind === "kin" ? "said this" : "spoke"} in the table chat${addressed ? ", to you" : ""}. Join the conversation naturally.` });
-  }
-  while (cfg.talkQ.length > 8) cfg.talkQ.shift();
-}
+// The conductor (kr-conductor.js, the same one every Kin Relay table uses) picks ONE next speaker, or nobody, after each
+// line: spoken-to Kins first (@Name, "Name," ...; "@all" one after another), else by relevance, who has been quiet longest
+// and personality. Only one Kin generates at a time, after a short natural pause, and a follow-up must come from a different Kin.
+const COND = require("./kr-conductor.js");
+const cond = COND.create({ maxChain: MAX_CHAIN, kinGapMs: KIN_GAP_MS, asksPerMin: TABLE_ASKS_PER_MIN, busyTtlMs: JOB_TTL_MS, delayScale: Number.isFinite(Number(process.env.KGR_CHAT_DELAY)) && process.env.KGR_CHAT_DELAY !== "" ? Number(process.env.KGR_CHAT_DELAY) : 1 });
+const condState = () => (T.cond = cond.norm(T.cond));
+const condKins = () => kinSeats().map((s) => { const k = allKins.find((x) => x.id === s.kinId); return { id: s.id, name: s.name, owner: s.owner, profile: k ? k.profile : "", auto: true }; });
+const tablePeople = () => (T ? T.seats.filter((s) => s.kind !== "kin").map((s) => s.name) : []);
+// The app asks for one particular Kin to speak (a reaction after a big hand).
+function converse(e, why) { if (cfg.mode === "host" && T && e.pick) cond.direct(condState(), e.pick.id, why); }
 function typingList() {
   const t = now(), out = [];
   for (const [id, x] of Object.entries(typingNow)) out.push({ id, name: x.name, since: x.since });
@@ -339,26 +297,28 @@ async function reportKinErr(text) {
   if (cfg.mode === "host") await tablePost({ who: "Kin Relay", kind: "dealer", text: clean(text, 300) });
 }
 const FATAL_ERR = /API key|Settings first|did not accept|refused \(403|could not find that Kin|Add a Kin|Kin Relay is not answering/i;
-// Run the Kins that were asked to talk. Mine answer here; a guest's Kin gets a request on the guest's own copy.
+// Let the conductor run the table: one Kin at a time. Mine answer here; a guest's Kin gets a request (with a request id)
+// on the guest's own copy, and the host waits for that line (or its "no answer") before anyone else is asked.
 async function drainTalk() {
-  if (cfg.mode !== "host" || !T) { cfg.talkQ = []; return; }
-  cfg.talkQ = Array.isArray(cfg.talkQ) ? cfg.talkQ : [];
-  const t0 = now(); let guard = 0;
-  while (cfg.talkQ.length && guard++ < 12) {
-    if (now() - t0 > TALK_BUDGET_MS) break; // the rest waits for the next run (nextWake)
-    const job = cfg.talkQ.shift();
-    if (now() - job.ts > JOB_TTL_MS) continue;
-    const s = seatOf(job.seat); if (!s) continue;
-    if (job.owner === cfg.myId) { if (await speakLocal(s, job)) cfg.talkQ.length = 0; }
-    else {
-      const m = T.members[job.owner]; if (!m || m.status !== "in") continue;
+  if (cfg.mode !== "host" || !T) return;
+  const st = condState(); let fatal = false;
+  const r = await cond.drive(st, { kins: condKins, ctx: () => ({ people: tablePeople() }), maxSleep: 3000,
+    ask: async (k, job, p) => {
+      const s = seatOf(k.id); if (!s) return {};
+      const why = p.why || `${p.last.who} just ${p.last.kind === "kin" ? "said this" : "spoke"} in the table chat${p.addressed ? ", to you" : ""}. Join the conversation naturally.`;
+      if (k.owner === cfg.myId) { if (await speakLocal(s, { why })) fatal = true; return { local: true }; }
+      const m = T.members[k.owner]; if (!m || m.status !== "in") return {};
       cfg.typingRemote = cfg.typingRemote || {};
       cfg.typingRemote[s.id] = { name: s.name, since: now(), until: now() + REMOTE_TYPING_MS };
-      enqueue(m.addr, { t: "talk", why: job.why, from: "", chatTail: recentChat(14), ctx: tableCtx() });
+      enqueue(m.addr, { t: "talk", job, why, from: "", chatTail: recentChat(14), ctx: tableCtx() });
       if (inMembers().length) shareState();
-    }
-  }
+      return { remote: true };
+    } });
+  if (fatal) { st.owed = []; st.pending = false; } // no key / wrong key: the same for every Kin, so stop asking
+  cfg.talkUntil = r.until || 0; await saveTable();
 }
+// A guest's copy said it has no line (nothing to say, or an error): free the table for the next speaker.
+function talkOver(from) { if (!T) return; const st = condState(); if (st.busy && st.busy.owner === from) cond.done(st, st.busy.job, { ok: false }); }
 // My own Kin answers. Returns true when the problem will repeat for every Kin (no key, wrong key, no subscription).
 async function speakLocal(s, job) {
   const k = allKins.find((x) => x.id === s.kinId);
@@ -632,8 +592,8 @@ async function hostGot(p) {
       const turn = String(ev.turnId || ""); if (!turn || turn !== T.kinTurnId) continue;
       await applyMove("k:" + from, String(ev.type || ""), Number(ev.to) || 0, turn); // only the move: any text in the delivery is ignored
     }
-    else if (ev.t === "talkEnd") { delete (cfg.typingRemote || {})["k:" + from]; }
-    else if (ev.t === "talkErr") { const sx = seatOf("k:" + from); delete (cfg.typingRemote || {})["k:" + from]; if (sx) await reportKinErr(`${sx.name} couldn't reply: ${clean(ev.text, 160) || "no answer"}`); }
+    else if (ev.t === "talkEnd") { delete (cfg.typingRemote || {})["k:" + from]; talkOver(from); }
+    else if (ev.t === "talkErr") { const sx = seatOf("k:" + from); delete (cfg.typingRemote || {})["k:" + from]; talkOver(from); if (sx) await reportKinErr(`${sx.name} couldn't reply: ${clean(ev.text, 160) || "no answer"}`); }
     else if (ev.t === "say" || ev.t === "kinSay" || ev.t === "ooc") {
       const text = clean(ev.text); if (!text) continue;
       if (ev.lid && await dedupe(ev.t + ":" + from + ":" + String(ev.lid).slice(0, 20))) continue;
@@ -687,6 +647,7 @@ async function memberGot(p) {
     }
     else if (ev.t === "talk" || ev.t === "mention") {
       const k = myKin(), seat = "k:" + cfg.myId;
+      if (!cond.claim((cfg.cond = cond.norm(cfg.cond)), ev.job)) continue; // a request that was delivered twice answers once
       if (!k || cfg.kinTalk === false || cfg.mode !== "member") { enqueue(cfg.hostAddr, { t: "talkEnd" }); continue; }
       cfg.chatTail = clean(ev.chatTail, 3000); cfg.talkCtx = clean(ev.ctx, 1500);
       const why = clean(ev.why, 300) || `${clean(ev.from, NAME_MAX)} just spoke to you in the table chat.`;
@@ -911,7 +872,7 @@ async function writeView() {
   }
   const v = {
     mode: cfg.mode, joined: !!cfg.joined, joinStage: cfg.joinStage || "", joinError: cfg.joinError || "", me: { id: cfg.myId, name: cfg.name }, note, hasAddress: !!myAddr,
-    kins: allKins, kinId: cfg.kinId, kinIds: cfg.kinIds || [], kinTalk: cfg.kinTalk !== false, kinAuto: cfg.kinAuto !== false, drafts: (cfg.drafts || []).map((d) => ({ id: d.id, name: d.name, text: d.text, from: d.from })), table: cfg.mode === "off" ? null : pub, mine, legal,
+    kins: allKins.map((k) => ({ id: k.id, name: k.name })), kinId: cfg.kinId, kinIds: cfg.kinIds || [], kinTalk: cfg.kinTalk !== false, kinAuto: cfg.kinAuto !== false, drafts: (cfg.drafts || []).map((d) => ({ id: d.id, name: d.name, text: d.text, from: d.from })), table: cfg.mode === "off" ? null : pub, mine, legal,
     chat: chat.slice(-CHAT_VIEW), ooc: ooc.slice(-CHAT_VIEW), pendingChat, pendingOoc, online: host ? null : (hostSeen ? now() - hostSeen < ONLINE_MS : null),
     budget: { sentThisHour: budget.hour, sentToday: budget.day, queued: Object.values(outq).reduce((a, q) => a + q.length, 0) }, alive: Math.floor(now() / 20000),
     kinUse: { used: kinUsed(), cap: kinCap() }, asleep: idle(),
@@ -962,7 +923,7 @@ function tableSummary() {
 function nextWake() {
   if ((cfg.quietWakes || 0) >= MAX_QUIET_WAKES) return 0; // many self-wakes in a row with nobody using it: the chain ends
   const times = [];
-  if (cfg.mode === "host" && Array.isArray(cfg.talkQ) && cfg.talkQ.length) times.push(now() + 1500); // Kins still waiting to speak
+  if (cfg.mode === "host" && T && cond.pending(T.cond)) times.push(Math.max(now() + 1500, cfg.talkUntil || 0)); // a Kin is about to speak, or a guest's Kin is answering
   for (const addr of Object.keys(outq)) if (outq[addr] && outq[addr].length) times.push(Math.max(now() + 1000, (lastSent[addr] || 0) + BASE_GAP, backoff[addr] || 0));
   const sleeping = idle();
   if (cfg.mode === "member" && cfg.joined && !sleeping) times.push((lastSent[cfg.hostAddr] || 0) + hbGap());

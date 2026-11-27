@@ -3,9 +3,10 @@
  "tested": [
   "Group chat with several Kins and people across two PCs through the relay",
   "Kins answer people and each other (at most 3 in a row), the Kin you name answers first",
-  "'X is typing\u2026' on every screen; a Kin that can't answer says why",
+  "'X is typing…' on every screen; a Kin that can't answer says why",
   "A guest's Kin answers through its own person's key",
-  "What the room tells a Kin is remembered on this PC and used in its next answers"
+  "What the room tells a Kin is remembered on this PC and used in its next answers",
+  "Group chat works like Kindroid's: after each line ONE Kin is chosen to speak (or none) by @Name, relevance, who has been quiet and personality; one Kin writes at a time after a short pause; a different Kin may follow (3 Kin lines in a row at most)"
  ],
  "limits": [
   "Kin voice notes and selfies can't be made here: Kindroid's API has no voice or picture endpoint. 'Read aloud' uses this device's own voice instead."
