@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cards Against Kin-manatee</title>
+<link rel="stylesheet" href="style.css">
+<body>
+<div id="sprite"></div>
+
+<!-- ===== menu ===== -->
+<main id="menu">
+  <div class="hero">
+    <svg class="logo" viewBox="0 0 120 80" aria-hidden="true" style="color:#bfeef0"><use href="#manatee"/></svg>
+    <h1>Cards Against <b>Kin-manatee</b></h1>
+    <p>A fill-in-the-blank party card game for you, your friends and your Kins. Silly, never mean. Nothing to buy.</p>
+  </div>
+  <div class="box">
+    <label>Your name at the table<input id="myname" maxlength="40" placeholder="Your name" autocomplete="off"></label>
+    <div class="tabs" role="tablist">
+      <button id="tSolo" class="on" role="tab">Solo<small>Free · no credits</small></button>
+      <button id="tKins" role="tab">My Kins<small>Uses credits</small></button>
+      <button id="tHost" role="tab">Host<small>Uses credits</small></button>
+      <button id="tJoin" role="tab">Join<small>Uses credits</small></button>
+    </div>
+
+    <section id="pSolo" class="pane">
+      <p class="free">Free. Runs only on this screen: no Kin, no app runs, nothing sent. You play against computer players with their own sense of humor.</p>
+      <div class="opt"><span>Computer players</span><div class="seg" id="oN"></div></div>
+      <div class="opt"><span>First to</span><div class="seg" id="oPts"></div></div>
+      <div class="opt"><span>Rule twists (optional)</span><div class="seg chips" id="oRules"></div></div>
+      <div id="oPreview" class="preview"></div>
+      <button id="doSolo" class="go">Deal me in · play free</button>
+    </section>
+
+    <section id="pKins" hidden class="pane">
+      <p class="paid">Your own Kins sit at the table, play cards, judge as Czar and may drop a line. Every Kin decision is a Kin request on your account and uses Kindroid credits (about one per Kin per round; an hourly limit keeps it in check).</p>
+      <div>Choose up to 10 Kins</div><div class="row kinpick" id="soloPick"></div>
+      <p class="note" id="soloNote"></p>
+      <div class="opt"><span>Computer players to fill seats (free)</span><div class="seg" id="kBots"></div></div>
+      <button id="doKins" class="go">Start with my Kins</button>
+    </section>
+
+    <section id="pHost" hidden class="pane">
+      <p class="paid">Hosting runs this app on Kindroid to deal and carry cards between people, so it may use Kindroid credits while people play. It goes quiet 10 minutes after the last move or message. Up to five people; each may bring one Kin.</p>
+      <label>Table name<input id="tName" maxlength="60" placeholder="Friday night lagoon"></label>
+      <div class="opt"><span>Computer players to fill seats (free)</span><div class="seg" id="hBots"></div></div>
+      <button id="doHost" class="go">Open the table</button>
+    </section>
+
+    <section id="pJoin" hidden class="pane">
+      <p class="paid">Joining runs this app on Kindroid to send your cards and chat, so it may use Kindroid credits. It goes quiet 10 minutes after your last move.</p>
+      <label>Invite code from the host<textarea id="jCode" rows="3" placeholder="MANATEE-…"></textarea></label>
+      <button id="doJoin" class="go">Ask to sit down</button>
+    </section>
+
+    <div id="bringBox" hidden><div class="note" style="margin-bottom:6px">Bring a Kin to the table (it gets its own seat; uses Kin requests)</div><div class="row kinpick" id="bring"></div></div>
+    <div class="bar" id="menuBar"><span class="dot" id="runDot0"></span><b id="runTxt0">Checking…</b><button id="startBtn0" class="sm" hidden>Start</button><span id="menuQuit"></span></div>
+    <p class="note" id="note0"></p>
+  </div>
+</main>
+
+<!-- ===== table ===== -->
+<main id="game" hidden>
+  <header class="top">
+    <button id="back" class="ib" title="Leave this table" aria-label="Leave this table">←</button>
+    <div class="ttl"><b id="title"></b><span id="sub"></span></div>
+    <span class="bar slim" id="onlineBar" hidden><span class="dot" id="runDot"></span><b id="runTxt"></b><button id="startBtn" class="sm" hidden>Start</button></span>
+    <button id="bSnd" class="ib" title="Sound (M)" aria-pressed="true">♪</button>
+    <button id="bChat" class="ib" title="Chat, log, awards (T)">Chat<i id="unread" hidden></i></button>
+    <button id="gear" class="ib" title="Table settings" aria-label="Table settings">⚙</button>
+  </header>
+  <section id="score" aria-label="Scores"></section>
+  <section id="arena">
+    <div id="promptBox"></div>
+    <div id="answers" aria-live="polite"></div>
+  </section>
+  <div id="banner" aria-live="polite"></div>
+  <section id="dock">
+    <div id="status" aria-live="polite"></div>
+    <div id="timer" hidden><i></i></div>
+    <div id="acts"></div>
+    <div class="note" id="note"></div>
+  </section>
+  <section id="handWrap">
+    <div id="handHint"><span id="handTxt"></span><span class="note" id="keysTxt"></span></div>
+    <div id="hand" role="listbox" aria-label="Your answer cards"></div>
+  </section>
+</main>
+
+<aside id="panel" class="side" hidden>
+  <div class="row"><b class="grow">Table</b><button class="ib" id="closePanel" aria-label="Close">✕</button></div>
+  <div class="row" id="ptabs"><button data-t="chat" class="on sm">Chat</button><button data-t="ooc" class="sm" title="Out of character: only people see this, never a Kin">OOC</button><button data-t="ach" class="sm">Awards</button></div>
+  <div id="pBody"></div>
+  <div class="row" id="sayRow"><input id="say" class="grow" maxlength="500" placeholder="Say something to the table"><button id="send" class="go sm">Send</button></div>
+</aside>
+
+<aside id="drawer" class="side" hidden>
+  <div class="row"><b class="grow" style="font-size:18px">Settings</b><button class="ib" id="closeDrawer" aria-label="Close">✕</button></div>
+  <h2>This screen</h2>
+  <label class="chk"><input type="checkbox" id="sSound"> Sound effects</label>
+  <label class="chk"><input type="checkbox" id="sMotion"> Animations (off follows your device's reduced-motion setting)</label>
+  <p class="note">Keys: 1–9 and 0 pick a card · Enter plays or crowns · N next round · M sound · T chat.</p>
+  <div id="onlineTools">
+    <div id="hostTools">
+      <div class="guests"><h2>Invite code</h2><div class="code" id="invite"></div><button id="copyInvite" class="sm" style="margin-top:6px">Copy invite code</button>
+      <p class="note">Share it only with people you want at the table (up to five people including you). You admit each one.</p>
+      <h2>Waiting to sit down</h2><div id="waiting" class="note"></div></div>
+      <h2>Computer players (free)</h2><div class="seg" id="bN"></div>
+      <h2>Rules</h2>
+      <label>Points to win<div class="seg" id="sTarget"></div></label>
+      <div class="row"><label class="grow">Seconds to play<input id="sPick" type="number" min="20" max="600"></label><label class="grow">Seconds to judge<input id="sJudge" type="number" min="20" max="600"></label></div>
+      <label class="chk"><input type="checkbox" id="sAuto"> Deal the next round automatically</label>
+      <label class="chk"><input type="checkbox" id="rGambling"> Gambling: bet a point on an extra answer</label>
+      <label class="chk"><input type="checkbox" id="rRando"> Random Manatee: an imaginary player plays a random card</label>
+      <label class="chk"><input type="checkbox" id="rReboot"> Rebooting the Universe: trade a point to swap cards</label>
+      <label class="chk"><input type="checkbox" id="rPacking"> Packing Heat: an extra card before a Pick 2</label>
+      <label class="chk"><input type="checkbox" id="rMerit"> Meritocracy: the winner is the next Czar</label>
+      <label class="chk"><input type="checkbox" id="rWheaton"> Wheaton's Law: the Czar picks one of two prompts</label>
+      <label class="chk"><input type="checkbox" id="rNever"> Never Have I Ever: discard cards you don't get</label>
+      <label>Custom prompt cards, one per line (use ____ for a blank)<textarea id="sCP" placeholder="My Kin's secret talent is ____."></textarea></label>
+      <label>Custom answer cards, one per line<textarea id="sCA" placeholder="A manatee wearing sunglasses."></textarea></label>
+      <div class="row"><button id="saveS" class="go sm">Save rules</button><button id="pauseBtn" class="sm">Pause</button><button id="endBtn" class="sm">Happy Ending</button><button id="newGame" class="sm">New game</button></div>
+      <p class="note">Custom cards join the deck at the next new game. Happy Ending makes the next round the last, played with the closing haiku card.</p>
+      <h2>People</h2><div id="people"></div>
+    </div>
+    <div id="memberInfo" class="note"></div>
+    <h2>Your Kin</h2><div id="kinPick" class="row kinpick"></div>
+    <div id="soloKinBox" hidden><div class="note">Your Kins at the table (up to 10)</div><div class="row kinpick" id="soloPick2"></div></div>
+    <div id="kinBox" class="row"></div>
+    <h2>Credits</h2><p class="note" id="creditNote"></p>
+    <p class="note" id="budget"></p>
+  </div>
+  <button id="leave" class="danger">Leave the table</button>
+</aside>
+<div class="toast" id="toast" aria-live="polite"><div class="seal" id="sealicon">🏅</div><div><div class="t1" id="t1"></div><div class="t2" id="t2"></div><div class="t3" id="t3"></div></div></div>
+
+<script src="cards.js"></script>
+<script src="game.js"></script>
+<script src="bots.js"></script>
+<script src="art.js"></script>
+<script src="sound.js"></script>
+<script src="solo.js"></script>
+<script src="app.js"></script>
+<!-- kin-quit: a Quit button that stops this app and closes its screen -->
+<style>
+button.kq-btn.kq-btn{position:fixed;top:10px;right:10px;z-index:2147483000;min-height:34px;padding:4px 14px;border-radius:999px;border:1px solid #f18c9a99;background:#1b1a22e6;color:#f7b8c0;font:600 13px/1 system-ui,-apple-system,"Segoe UI",sans-serif;cursor:pointer;box-shadow:0 2px 10px #0006}
+button.kq-btn.kq-btn:hover{border-color:#f18c9a}
+button.kq-btn.kq-btn.kq-inline{position:static;z-index:auto;min-height:30px;box-shadow:none;margin-left:auto;flex:none}
+#kq-layer{position:fixed;inset:0;z-index:2147483001;display:grid;place-items:center;padding:16px;background:#0c0b11f5;color:#f3f2f7;font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+#kq-layer[hidden]{display:none}
+#kq-box{width:100%;max-width:430px;text-align:center}
+#kq-box h2{margin:0 0 8px;font-size:22px;line-height:1.2}
+#kq-box p{color:#bdbacb;margin:0 0 18px}
+#kq-box .kq-row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+#kq-box button{min-height:46px;padding:8px 18px;border-radius:12px;font:600 15px system-ui,-apple-system,"Segoe UI",sans-serif;cursor:pointer}
+#kq-box .kq-go{background:#a5394b;border:1px solid #f18c9a;color:#fff}
+#kq-box .kq-no{background:transparent;border:1px solid #5c5a68;color:#eceaf3}
+</style>
+<div id="kq-layer" role="dialog" aria-modal="true" aria-labelledby="kq-title" hidden><div id="kq-box"></div></div>
+<script>
+/* Quit: asks first, lets the app finish its own stop step (window.KQ.before), then stops every
+   timer, ignores any late answer from Kindroid and covers the screen. "Open again" reloads the screen. */
+(() => {
+  const C = window.KQ || {};
+  const NAME = C.name || document.title || "this app";
+  const L = document.getElementById("kq-layer"), B = document.getElementById("kq-box"), Q = [];
+  // window.KQ.after: elements to place a Quit button right after (e.g. each view's status bar); otherwise one floats top right.
+  const quitButton = (inline) => { const b = document.createElement("button"); b.type = "button"; b.className = "kq-btn" + (inline ? " kq-inline" : ""); b.textContent = "Quit"; b.setAttribute("aria-haspopup", "dialog"); b.onclick = ask; Q.push(b); return b; };
+  for (const sel of C.after || []) { const t = document.querySelector(sel); if (t) t.after(quitButton(true)); }
+  if (!Q.length) document.body.appendChild(quitButton(false));
+  let quit = false, closing = false;
+  window.addEventListener("message", (e) => { if (quit) e.stopImmediatePropagation(); }, true);
+  const mk = (text, cls, fn) => { const b = document.createElement("button"); b.type = "button"; b.className = cls; b.textContent = text; b.onclick = fn; return b; };
+  function show(title, text, buttons) {
+    B.replaceChildren();
+    const h = document.createElement("h2"); h.id = "kq-title"; h.textContent = title;
+    const p = document.createElement("p"); p.textContent = text;
+    const row = document.createElement("div"); row.className = "kq-row"; row.append(...buttons);
+    B.append(h, p, row); L.hidden = false;
+    if (buttons[0]) buttons[0].focus();
+  }
+  function ask() {
+    const a = typeof C.ask === "function" ? C.ask() : {};
+    show(a.title || "Quit " + NAME + "?",
+      a.text || "This stops anything in progress and closes the app. Nothing runs until you open it again. Copy anything you want to keep first.",
+      [mk(a.go || "Quit", "kq-go", doQuit), mk("Keep going", "kq-no", () => { L.hidden = true; })]);
+  }
+  async function doQuit() {
+    if (closing) return; closing = true;
+    show("Closing " + NAME + "…", C.closingText || "Stopping what it was doing.", []);
+    if (typeof C.before === "function") {
+      try { await Promise.race([Promise.resolve(C.before()), new Promise((r) => setTimeout(r, C.waitMs || 45000))]); } catch (e) {}
+    }
+    quit = true;
+    let id = setTimeout(() => {}, 0);
+    while (id > 0) { clearTimeout(id); clearInterval(id); id--; }
+    for (const n of document.body.children) if (n !== L && n.tagName !== "SCRIPT" && n.tagName !== "STYLE") n.style.display = "none";
+    show(NAME + " is closed", C.closedText || "Nothing is running. You can close this panel now.", [mk("Open again", "kq-no", () => location.reload())]);
+  }
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !L.hidden && !closing) L.hidden = true; });
+})();
+</script>
+<!-- /kin-quit -->
+</body></html>

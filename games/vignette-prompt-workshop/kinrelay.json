@@ -1,0 +1,6 @@
+{
+ "level": "full",
+ "tested": [
+  "Builds the avatar fields on the screen (no Kin needed)"
+ ]
+}

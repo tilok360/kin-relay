@@ -1,0 +1,16 @@
+{
+  "kin": 1,
+  "name": "Kin Co-Host",
+  "purpose": "Puts your Kin in your Twitch or Joystick.tv live chat as a co-host that replies, greets, thanks and banters.",
+  "triggers": [{ "on": "always" }],
+  "run": { "entry": "node main.js" },
+  "screens": [{ "slot": "panel", "entry": "screen/index.html", "title": "Co-Host" }],
+  "grants": [
+    "always",
+    "kin:read",
+    "net:irc-ws.chat.twitch.tv",
+    "secret:twitchchat@irc-ws.chat.twitch.tv",
+    "net:joystick.tv",
+    "secret:joystickbot@joystick.tv"
+  ]
+}

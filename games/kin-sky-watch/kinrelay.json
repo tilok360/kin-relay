@@ -1,0 +1,15 @@
+{
+ "level": "mostly",
+ "tested": [
+  "Refresh pulls the latest data from NASA/NOAA and others",
+  "Links open in your browser"
+ ],
+ "limits": [
+  "Its daily update runs only while Kin Relay is open; the first open after a day catches up."
+ ],
+ "web": {
+  "limits": [
+   "On the phone/web version it updates when you open it or press Refresh."
+  ]
+ }
+}

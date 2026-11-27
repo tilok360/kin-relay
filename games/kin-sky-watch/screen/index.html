@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sky Watch</title>
+<style>
+  :root { --bg: #0b1020; --card: #141b33; --line: #26305a; --ink: #e8ecff; --dim: #9aa5d1; --gold: #ffd479; --teal: #6fe3c8; --red: #ff8a80; --violet: #b69cff; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: radial-gradient(1200px 600px at 70% -10%, #1d2752 0%, var(--bg) 60%) fixed; color: var(--ink); font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 760px; margin: 0 auto; padding: 14px 14px 40px; }
+  header { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  h1 { font-size: 22px; margin: 0; letter-spacing: .3px; flex: 1; }
+  h1 small { display: block; font-size: 12px; font-weight: 400; color: var(--dim); letter-spacing: 0; }
+  button { font: inherit; border: 1px solid var(--line); background: #1c2550; color: var(--ink); border-radius: 10px; padding: 8px 12px; cursor: pointer; }
+  button:hover { border-color: var(--violet); }
+  button:disabled { opacity: .55; cursor: default; }
+  button.gold { background: var(--gold); color: #1b1606; border-color: var(--gold); font-weight: 600; }
+  nav { display: flex; flex-wrap: wrap; gap: 6px; margin: 14px 0 10px; }
+  nav button { white-space: nowrap; border-radius: 999px; padding: 6px 11px; font-size: 14px; }
+  nav button[aria-selected="true"] { background: var(--violet); border-color: var(--violet); color: #120b2b; font-weight: 600; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; margin: 10px 0; }
+  .card h2 { font-size: 16px; margin: 0 0 6px; }
+  .muted { color: var(--dim); font-size: 13px; }
+  .row { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  .big { font-size: 18px; font-weight: 600; }
+  .tag { display: inline-block; font-size: 12px; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--dim); }
+  .tag.close { border-color: var(--gold); color: var(--gold); }
+  .tag.new { border-color: var(--teal); color: var(--teal); }
+  .track { position: relative; height: 22px; margin: 8px 0 2px; }
+  .track .bar { position: absolute; left: 0; right: 0; top: 10px; height: 2px; background: linear-gradient(90deg, #3a4680, #26305a); }
+  .track .earth, .track .moon, .track .rock { position: absolute; top: 4px; width: 14px; height: 14px; border-radius: 50%; transform: translateX(-50%); }
+  .track .earth { left: 0; transform: none; background: radial-gradient(circle at 35% 35%, #9fd2ff, #2a6fd1); }
+  .track .moon { background: radial-gradient(circle at 35% 35%, #fff, #9aa0b5); width: 10px; height: 10px; top: 6px; }
+  .track .rock { background: radial-gradient(circle at 35% 35%, #ffe2a8, #a36b2c); width: 10px; height: 10px; top: 6px; }
+  .scale { position: relative; height: 14px; font-size: 11px; color: var(--dim); }
+  .scale span { position: absolute; top: 0; white-space: nowrap; }
+  .kp { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 6px; }
+  .kp > div { background: #0f1530; border: 1px solid var(--line); border-radius: 10px; padding: 8px; text-align: center; }
+  .kp b { display: block; font-size: 22px; }
+  .meter { height: 8px; border-radius: 4px; background: #222b52; margin-top: 6px; overflow: hidden; }
+  .meter i { display: block; height: 100%; background: linear-gradient(90deg, #4fd18b, #ffd479, #ff8a80); }
+  ul.plain { list-style: none; padding: 0; margin: 0; }
+  ul.plain li { padding: 8px 0; border-top: 1px solid var(--line); }
+  ul.plain li:first-child { border-top: 0; }
+  .form { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  select, input { font: inherit; background: #0f1530; color: var(--ink); border: 1px solid var(--line); border-radius: 10px; padding: 8px; }
+  input[type=number] { width: 96px; }
+  #msg { min-height: 20px; margin-top: 8px; font-size: 13px; color: var(--teal); }
+  .empty { text-align: center; padding: 30px 10px; }
+  a.lnk { color: var(--violet); cursor: pointer; text-decoration: underline; font-size: 13px; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Sky Watch <small id="updated">Not read yet</small></h1>
+    <button type="button" id="refresh" class="gold">Refresh</button>
+  </header>
+  <nav role="tablist">
+    <button type="button" role="tab" data-tab="asteroids" aria-selected="true">Asteroids</button>
+    <button type="button" role="tab" data-tab="aurora">Aurora</button>
+    <button type="button" role="tab" data-tab="supernovae">Supernovae</button>
+    <button type="button" role="tab" data-tab="volunteer">Help search</button>
+  </nav>
+  <section id="view"></section>
+  <div id="msg" aria-live="polite"></div>
+  <p class="muted">Data: NASA JPL close approaches and Scout, NOAA Space Weather Prediction Center, the Rochester Bright Supernova list, Zooniverse. Read once a morning; your Kin hears about anything that stands out.</p>
+</main>
+<script>
+"use strict";
+let sky = null, hunt = null, tab = "asteroids", seq = 1, busy = false;
+const waiting = {};
+const $ = (id) => document.getElementById(id);
+function send(msg) { return new Promise((res) => { const id = seq++; waiting[id] = res; parent.postMessage(Object.assign({ id }, msg), "*"); }); }
+window.addEventListener("message", (ev) => { const m = ev.data || {}; if (m.id != null && waiting[m.id]) { const f = waiting[m.id]; delete waiting[m.id]; f(m); } });
+const parse = (b) => { try { return b ? JSON.parse(b) : null; } catch { return null; } };
+async function load() {
+  const [a, b] = await Promise.all([send({ kin: "files.read", path: "sky.json" }), send({ kin: "files.read", path: "hunt.json" })]);
+  sky = parse(a.body); hunt = parse(b.body); render();
+}
+function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+const DAY = 86400000;
+const fmt = (iso) => new Date(iso).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+const fday = (d) => new Date(d.length === 10 ? d + "T12:00:00Z" : d).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+const size = (s) => (!s ? "size unknown" : s[1] >= 1000 ? `${(s[0] / 1000).toFixed(1)} to ${(s[1] / 1000).toFixed(1)} km` : `${s[0]} to ${s[1]} m`);
+const kind = (t) => (!t || /^unk/i.test(t) ? "" : t === "EGN" ? "A nova" : t === "LRN" ? "A red nova" : t === "LBV" ? "A giant star outburst" : t === "TDE" ? "A star torn apart by a black hole" : "Type " + t);
+const g = (kp) => (kp >= 9 ? "G5 extreme storm" : kp >= 8 ? "G4 severe storm" : kp >= 7 ? "G3 strong storm" : kp >= 6 ? "G2 moderate storm" : kp >= 5 ? "G1 minor storm" : kp >= 4 ? "active" : "quiet");
+function open(url) { send({ kin: "open", url }).then((m) => { if (!m.ok) say("The link didn't open."); }); }
+function link(text, url) { const a = el("a", "lnk", text); a.tabIndex = 0; a.addEventListener("click", () => open(url)); a.addEventListener("keydown", (e) => { if (e.key === "Enter") open(url); }); return a; }
+function say(t) { $("msg").textContent = t; }
+
+function rockCard(a) {
+  const c = el("div", "card"), top = el("div", "row");
+  top.append(el("span", "big", a.des), el("span", "tag" + (a.ld <= 2 ? " close" : ""), `${a.ld} lunar distances`));
+  c.append(top, el("div", "muted", `${fmt(a.when)} · ${(a.km / 1e6).toFixed(2)} million km · ${a.kms} km/s · ${size(a.size)} across`));
+  const t = el("div", "track"); t.append(el("i", "bar"), el("i", "earth"));
+  const moon = el("i", "moon"); moon.style.left = "10%"; t.append(moon);
+  const r = el("i", "rock"); r.style.left = Math.min(100, a.ld * 10) + "%"; t.append(r);
+  const sc = el("div", "scale"), lab = (t, css) => { const x = el("span", "", t); Object.assign(x.style, css); sc.append(x); };
+  lab("Earth", { left: "0" }); lab("10× the Moon's distance", { right: "0" });
+  c.append(t, sc);
+  return c;
+}
+function viewAsteroids(v, now) {
+  const rocks = (sky.asteroids || []).filter((a) => Date.parse(a.when) >= now - 3600000);
+  const week = rocks.filter((a) => Date.parse(a.when) <= now + 7 * DAY), later = rocks.filter((a) => Date.parse(a.when) > now + 7 * DAY);
+  const h = el("div", "card"); h.append(el("h2", "", "Passing Earth this week"), el("div", "muted", "Every known asteroid coming within 10 times the Moon's distance. All pass safely. On each line Earth is at the left, the white dot is the Moon's distance and the gold dot is the asteroid's."));
+  v.append(h);
+  if (!week.length) v.append(el("div", "card muted", "None this week."));
+  week.forEach((a) => v.append(rockCard(a)));
+  if (later.length) {
+    const c = el("div", "card"); c.append(el("h2", "", "Later this month"));
+    const ul = el("ul", "plain"); later.forEach((a) => ul.append(el("li", "", `${a.des}: ${a.ld} LD on ${fday(a.when)}, ${size(a.size)}`))); c.append(ul); v.append(c);
+  }
+  if (sky.scout && sky.scout.count) {
+    const c = el("div", "card"); c.append(el("h2", "", `${sky.scout.count} newly spotted, not yet confirmed`),
+      el("div", "muted", "JPL Scout follows objects seen only a few times that might be near-Earth asteroids, until more sightings pin down their orbits."));
+    v.append(c);
+  }
+}
+function viewAurora(v) {
+  const a = sky.aurora, c = el("div", "card");
+  c.append(el("h2", "", "Aurora outlook"));
+  if (!a || !a.days || !a.days.length) { c.append(el("div", "muted", "No forecast read yet.")); v.append(c); return; }
+  c.append(el("div", "muted", "NOAA's planetary K index, highest for each day (UTC). Storms start at Kp 5; the higher it goes, the farther from the poles auroras can show."));
+  const grid = el("div", "kp");
+  a.days.forEach((d) => { const box = el("div"); box.append(el("span", "muted", fday(d.day)), el("b", "", d.kp.toFixed(1)), el("span", "muted", g(d.kp)));
+    const m = el("div", "meter"), i = el("i"); i.style.width = Math.min(100, (d.kp / 9) * 100) + "%"; m.append(i); box.append(m); grid.append(box); });
+  c.append(grid);
+  if (a.now) c.append(el("div", "muted", `Latest measured: Kp ${a.now.kp.toFixed(1)} at ${a.now.when.replace("T", " ")} UTC.`));
+  v.append(c);
+  const t = el("div", "card"); t.append(el("h2", "", "Seeing one"), el("div", "muted", "Find a dark spot away from city lights, face the nearest pole (north in the northern hemisphere), and give your eyes 20 minutes. A phone camera on night mode often sees more than you do."));
+  v.append(t);
+}
+function viewSupernovae(v) {
+  const list = sky.supernovae || [], c = el("div", "card");
+  c.append(el("h2", "", "Brightest supernovae now"), el("div", "muted", "Lower magnitude is brighter. Around 13 is within reach of a backyard telescope of 8 inches or so; 11 to 12 needs less."));
+  v.append(c);
+  if (!list.length) { v.append(el("div", "card muted", "None read yet.")); return; }
+  list.forEach((s) => {
+    const k = el("div", "card"), top = el("div", "row");
+    top.append(el("span", "big", s.name), el("span", "tag" + (s.isNew ? " new" : ""), s.isNew ? "new" : `mag ${s.mag}`));
+    k.append(top, el("div", "", `${kind(s.type) ? kind(s.type) + " in " : "In "}${s.host || "an unnamed galaxy"} · magnitude ${s.mag}${s.max ? " (peak " + s.max + ")" : ""}`),
+      el("div", "muted", `Found ${fday(s.first)}${s.by ? " by " + s.by : ""} · RA ${s.ra}, Dec ${s.dec}`));
+    k.append(link("Finder charts and details", s.url));
+    v.append(k);
+  });
+}
+function viewVolunteer(v) {
+  const live = ((sky.projects && sky.projects.list) || []).filter((p) => p.state === "live");
+  const c = el("div", "card");
+  c.append(el("h2", "", "Search the sky yourself"), el("div", "muted", "Volunteer projects on Zooniverse that are open now. You look at real telescope images in your browser and mark what you see; scientists follow up the finds. A free Zooniverse account keeps your credit."));
+  v.append(c);
+  live.forEach((p) => { const k = el("div", "card"); k.append(el("div", "big", p.name), el("div", "muted", p.about)); const b = el("button", "", "Open on Zooniverse"); b.type = "button"; b.style.marginTop = "8px"; b.addEventListener("click", () => open(p.url)); k.append(b); v.append(k); });
+  if (!live.length) v.append(el("div", "card muted", "No open projects read yet. Press Refresh."));
+  const f = el("div", "card"); f.append(el("h2", "", "Your count"));
+  f.append(el("div", "", hunt && hunt.total ? `${hunt.total} classifications so far` : "Nothing logged yet. After a session, log how many you did and your Kin will keep track."));
+  if (hunt && hunt.projects) { const ul = el("ul", "plain"); Object.values(hunt.projects).forEach((p) => ul.append(el("li", "muted", `${p.name}: ${p.count}`))); f.append(ul); }
+  const form = el("div", "form"), sel = el("select"); sel.setAttribute("aria-label", "Project");
+  (live.length ? live : [{ name: "Zooniverse" }]).forEach((p) => { const o = el("option", "", p.name); o.value = p.name; sel.append(o); });
+  const n = el("input"); n.type = "number"; n.min = "1"; n.max = "10000"; n.value = "10"; n.setAttribute("aria-label", "How many");
+  const go = el("button", "gold", "Log it"); go.type = "button";
+  const submit = async () => {
+    const count = Math.round(Number(n.value)); if (!(count >= 1 && count <= 10000)) { say("Enter a number from 1 to 10,000."); return; }
+    if (busy) return; busy = true; go.disabled = true; say("Logging…");
+    const m = await send({ kin: "action", name: "sky_hunt_log", input: { project: sel.value, count } });
+    busy = false; go.disabled = false; say(m.ok ? (m.summary || "Logged.") : "Couldn't log it: " + (m.summary || "try again in a moment."));
+    if (m.ok) load();
+  };
+  go.addEventListener("click", submit); n.addEventListener("keydown", (e) => { if (e.key === "Enter") submit(); });
+  form.append(sel, n, go); f.append(form); v.append(f);
+}
+function render() {
+  const v = $("view"); v.textContent = "";
+  document.querySelectorAll("nav button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === tab)));
+  if (!sky) { const e = el("div", "card empty"); e.append(el("div", "big", "The sky hasn't been read yet"), el("p", "muted", "Press Refresh to read it now. After that it updates itself every morning.")); v.append(e); $("updated").textContent = "Not read yet"; return; }
+  $("updated").textContent = "Read " + fmt(sky.updated) + (sky.errors && sky.errors.length ? " · some sources didn't answer" : "");
+  const now = Date.now();
+  if (tab === "asteroids") viewAsteroids(v, now); else if (tab === "aurora") viewAurora(v); else if (tab === "supernovae") viewSupernovae(v); else viewVolunteer(v);
+}
+document.querySelectorAll("nav button").forEach((b) => b.addEventListener("click", () => { tab = b.dataset.tab; render(); }));
+$("refresh").addEventListener("click", async () => {
+  if (busy) return; busy = true; const b = $("refresh"); b.disabled = true; b.textContent = "Reading the sky…"; say("");
+  const m = await send({ kin: "action", name: "sky_refresh", input: {} });
+  busy = false; b.disabled = false; b.textContent = "Refresh";
+  say(m.ok ? "" : "Couldn't refresh: " + (m.summary || "try again in a moment."));
+  load();
+});
+document.addEventListener("visibilitychange", () => { if (!document.hidden) load(); });
+load();
+</script>
+</body>
+</html>

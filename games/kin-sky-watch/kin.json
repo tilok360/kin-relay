@@ -1,0 +1,46 @@
+{
+  "kin": 1,
+  "name": "Sky Watch",
+  "purpose": "Each morning it reads NASA, NOAA and supernova data so your Kin can tell you about asteroids passing Earth, auroras and new supernovae, and links the volunteer sky searches you can join.",
+  "triggers": [{ "on": "schedule", "cron": "0 7 * * *", "tz": "user" }],
+  "run": { "entry": "node main.js", "timeout": "1m" },
+  "screens": [{ "slot": "panel", "entry": "screen/index.html", "title": "Sky Watch" }],
+  "actions": [
+    {
+      "name": "sky_news",
+      "description": "Use when the person asks what's happening in the sky: asteroids passing Earth, auroras, supernovae, or volunteer sky searches they can join. Pick a topic if they ask about one.",
+      "input": {
+        "type": "object",
+        "properties": {
+          "topic": { "type": "string", "enum": ["all", "asteroids", "aurora", "supernovae", "volunteer"] }
+        }
+      },
+      "by": ["kin", "user"]
+    },
+    {
+      "name": "sky_refresh",
+      "description": "Reads the sky data again now, for the Sky Watch screen's Refresh button.",
+      "input": { "type": "object", "properties": {} },
+      "by": ["user"]
+    },
+    {
+      "name": "sky_hunt_log",
+      "description": "Use when the person says how many classifications they did on a Zooniverse sky search (like The Daily Minor Planet or Kilonova Seekers), to keep their running count.",
+      "input": {
+        "type": "object",
+        "properties": {
+          "project": { "type": "string", "maxLength": 60, "description": "the project's name, as they said it" },
+          "count": { "type": "integer", "minimum": 1, "maximum": 10000 }
+        },
+        "required": ["count"]
+      },
+      "by": ["kin", "user"]
+    }
+  ],
+  "grants": [
+    "net:ssd-api.jpl.nasa.gov",
+    "net:services.swpc.noaa.gov",
+    "net:www.rochesterastronomy.org",
+    "net:www.zooniverse.org"
+  ]
+}

@@ -1,0 +1,237 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>KinTouch</title>
+<style>
+:root{color-scheme:light dark;--a:#7c4dff;--bg:#f6f5f8;--c:#fff;--t:#1b1b1f;--m:#62626b;--ok:#2e9d5b}
+@media(prefers-color-scheme:dark){:root{--bg:#141417;--c:#1f1f24;--t:#f2f2f5;--m:#a0a0aa}}
+body{margin:0;background:var(--bg);color:var(--t);font:17px system-ui,sans-serif}
+main{max-width:430px;margin:0 auto;padding:20px;display:grid;gap:16px}
+.card{background:var(--c);border-radius:16px;padding:18px;display:grid;gap:12px}
+h1{margin:0;font-size:32px;padding-right:70px}h2{margin:0;font-size:17px;color:var(--m);font-weight:600}
+p{margin:0;color:var(--m)}
+button,select,input,textarea{font:inherit;min-height:48px;border-radius:12px;border:1px solid #8884;background:var(--c);color:var(--t);padding:0 12px}
+textarea{padding:10px 12px;min-height:64px;resize:vertical}
+button.go{background:var(--a);color:#fff;border:0;font-weight:600}
+button.stop{background:#d32f2f;color:#fff;border:0;font-size:22px;font-weight:700;min-height:72px}
+button.small{min-height:36px;font-size:14px}
+button:disabled,.off{opacity:.65}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+label{display:grid;gap:4px;color:var(--m);font-size:15px}
+.code{font-size:28px;letter-spacing:4px;text-align:center;color:var(--t)}
+.mono{font:13px/1.4 ui-monospace,Consolas,monospace;word-break:break-all;user-select:all;color:var(--t);background:#8881;border-radius:8px;padding:8px}
+#msg{min-height:22px;text-align:center}
+.steps{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+.steps li{display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:start}
+.steps .n{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:#8883;font-weight:700;font-size:14px}
+.steps li.done .n{background:var(--ok);color:#fff}
+.steps li.done .what{opacity:.7}
+.steps .what{display:grid;gap:6px;font-size:15px;color:var(--m)}.steps b{color:var(--t)}
+.log{display:grid;gap:8px;max-height:320px;overflow:auto}
+.bubble{padding:8px 12px;border-radius:14px;max-width:85%;white-space:pre-wrap;overflow-wrap:anywhere;font-size:15px}
+.me{justify-self:end;background:var(--a);color:#fff}.kin{justify-self:start;background:#8882}
+.toy{display:block;font-size:12px;opacity:.75;margin-top:4px}
+.hidden{display:none!important}
+</style>
+<main>
+<h1 id="big">Checking…</h1>
+<p id="msg"></p>
+<button class="stop" id="stop">STOP</button>
+<div class="row"><button class="small" id="reset">Reset token</button><button class="small" id="showSetup">Show the setup steps</button></div>
+
+<div class="card" id="setup"><h2>Set up KinTouch, step by step</h2>
+<ol class="steps">
+<li id="s1"><span class="n">1</span><div class="what"><b>Get a Lovense developer token</b>
+<span>In Lovense's developer dashboard, open Standard API and fill in the form. Its Callback URL box can't be left empty: put any placeholder address for now, you'll replace it with this app's address in step 3. Save, then copy your Developer Token.</span></div></li>
+<li id="s2" class="done"><span class="n">2</span><div class="what"><b>Allow KinTouch with that token</b>
+<span>Done if you can see this screen: Kindroid asked for "your token for api.lovense-api.com" when you allowed the app. Pasted the wrong thing? Tap Reset token (under STOP) and Kindroid asks for it again.</span>
+<span id="badtok" class="hidden" style="color:#d32f2f;font-weight:600">Lovense didn't accept the token. Reset it and paste your Developer Token again.</span>
+</div></li>
+<li id="s3"><span class="n">3</span><div class="what"><b>Paste this app's Callback URL into Lovense</b>
+<span>Back in Lovense's developer dashboard, replace the placeholder Callback URL with this address and save. It is this copy's own address: everyone's is different.</span>
+<span class="mono" id="cb">Getting this app's address…</span>
+<button class="small" id="cbcopy">Copy Callback URL</button>
+<button class="small" id="cbdone">I pasted it and saved</button></div></li>
+<li id="s4"><span class="n">4</span><div class="what"><b>Pair your toy in Lovense Remote</b>
+<span>Lovense Remote is Lovense's own app for your toy. Where will the toy connect?</span>
+<div class="row" id="plat"><button class="small" data-os="ios">iPhone / iPad</button><button class="small" data-os="android">Android</button><button class="small" data-os="mac">Mac</button><button class="small" data-os="win">Windows PC</button></div>
+<span id="osText">Pick one above for the steps.</span>
+<button class="small" id="s4done">My toy shows in Lovense Remote</button></div></li>
+<li id="s5"><span class="n">5</span><div class="what"><b>Link KinTouch to Lovense Remote</b>
+<span>Tap Make a code, then enter the code in Lovense Remote (on a phone you can also scan it). This screen says Connected when Lovense reports your toy. If it doesn't within a minute, tap "check connection".</span>
+<div class="code" id="code"></div>
+<button class="go" id="mk">Make a code</button><button class="small" id="rf">I entered it – check connection</button></div></li>
+<li id="s6"><span class="n">6</span><div class="what"><b>Play</b>
+<span>Use the controls and the chat below, or just talk to your Kin in Kindroid's own chat: it can start, ramp, pattern, run steps and stop your toy. STOP at the top always works.</span></div></li>
+</ol></div>
+
+<div class="card" id="chatcard"><h2>Chat with your Kin</h2>
+<p>Your Kin answers here and can work the toy as it talks. Kept only in this app.</p>
+<div class="log" id="log"></div>
+<textarea id="say" placeholder="Say something…" maxlength="1000"></textarea>
+<div class="row"><button class="go" id="send">Send</button><button id="clear">Clear chat</button></div></div>
+
+<div class="card" id="play"><h2>Run the toy yourself</h2>
+<label>Motion<select id="act"><option>Vibrate</option><option>Rotate</option><option>Pump</option><option>Thrust</option><option>Fingering</option><option>Suction</option><option>Oscillate</option><option>Depth</option><option>All</option></select></label>
+<div class="row"><label>Strength <span id="sv">10</span><input type="range" id="str" min="0" max="20" value="10"></label>
+<label>Seconds<input type="number" id="sec" min="1" max="60" value="10"></label></div>
+<button class="go" id="start">Start</button></div>
+<div class="card" id="pat"><h2>Patterns</h2><div class="row">
+<button data-p="pulse">Pulse</button><button data-p="wave">Wave</button><button data-p="fireworks">Fireworks</button><button data-p="earthquake">Earthquake</button></div></div>
+<div class="card" id="limitcard"><h2>Session limit</h2>
+<p>Cap how long the toy can run in an hour, from you, the chat or your Kin. STOP always works.</p>
+<label>Play time per hour<select id="limit"><option value="0">No limit</option><option value="5">5 minutes</option><option value="10">10 minutes</option><option value="20">20 minutes</option><option value="30">30 minutes</option><option value="45">45 minutes</option></select></label>
+<p id="limitnote"></p></div>
+</main>
+<script>
+/* Session limit: kept in limit.json, which every toy command checks. Its own reads use an id, so they never
+   collide with the screen's other file reads. */
+(()=>{const sel=document.getElementById("limit"),note=document.getElementById("limitnote");let n=0;const wait={};
+addEventListener("message",e=>{const d=e.data||{};if(d.kin==="files.read"&&d.id&&wait[d.id]){wait[d.id](d.body);delete wait[d.id]}});
+const read=p=>new Promise(r=>{const id="lim"+(++n);wait[id]=r;parent.postMessage({kin:"files.read",id,path:p},"*");setTimeout(()=>{if(wait[id]){delete wait[id];r(null)}},8000)});
+const say=()=>{const m=+sel.value;note.textContent=m?`Up to ${m} minutes of play per hour. Past that, commands are refused until the hour is up.`:"No limit set."};
+sel.addEventListener("change",()=>{parent.postMessage({kin:"files.write",path:"limit.json",body:JSON.stringify({minutes:+sel.value,at:Date.now()})},"*");say()});
+read("limit.json").then(b=>{try{const j=JSON.parse(b);if(j&&[...sel.options].some(o=>+o.value===+j.minutes))sel.value=String(+j.minutes)}catch{}say()});})();
+</script>
+<script>
+const $=i=>document.getElementById(i);let busy=false,linked=false,pend={},askedCb=false,kinId="",lastChat="",ticks={},showSetup=null;
+const rd=p=>new Promise(r=>{pend[p]=r;parent.postMessage({kin:"files.read",path:p},"*")});
+const wr=(p,o)=>parent.postMessage({kin:"files.write",path:p,body:JSON.stringify(o)},"*");
+addEventListener("message",e=>{const d=e.data||{};
+ if(d.kin==="files.read"&&pend[d.path]){pend[d.path](d.body);delete pend[d.path]}
+ if(d.kin==="kins"){kinId=(d.current&&(d.current.id||d.current))||(d.kins&&d.kins[0]&&d.kins[0].id)||""}
+ if(d.kin==="action"){busy=false;
+  if(d.name==="stop"){if(d.ok){stopTries=0;say("Stopped.");load();return}
+   if(stopTries&&stopTries<10){stopTries++;say("Stopping… waiting for the last request to finish.");setTimeout(()=>{busy=false;act("stop",{})},2500);return}
+   stopTries=0;say("The stop may not have reached the toy. Use the stop button in Lovense Remote, or switch the toy off.");load();return}
+  if(stopTries){setTimeout(()=>{busy=false;act("stop",{})},300)}
+  if(d.name==="callback"){load();lock();return}say(d.ok?d.summary||"Done.":(d.summary||"That didn't work."));load()}});
+function say(t){$("msg").textContent=t}
+let busyT=0;function act(name,input){if(busy)return false;busy=true;clearTimeout(busyT);busyT=setTimeout(()=>{if(busy){busy=false;lock();load()}},name==="reset_token"?15000:150000);say(name==="chat"?"Your Kin is answering…":"Working…");lock();parent.postMessage({kin:"action",name,input},"*");return true}
+function lock(){const off=busy||!linked;["start"].forEach(i=>$(i).disabled=off);document.querySelectorAll("[data-p]").forEach(b=>b.disabled=off);
+ ["mk","rf","send","clear"].forEach(i=>$(i).disabled=busy);$("play").classList.toggle("off",!linked);$("pat").classList.toggle("off",!linked)}
+function bubble(m){const b=document.createElement("div");b.className="bubble "+(m.who==="me"?"me":"kin");b.textContent=m.text;
+ if(m.toy){const t=document.createElement("span");t.className="toy";t.textContent=(m.toyFailed?"Toy ":"Toy: ")+m.toy;b.append(t)}return b}
+function steps(cbOk){
+ const done={s1:true,s2:!$("badtok")||$("badtok").classList.contains("hidden"),s3:!!ticks.cb,s4:!!ticks.paired||linked,s5:linked,s6:linked};
+ if(!cbOk)done.s3=false;
+ for(const k in done)$(k).classList.toggle("done",done[k]);
+ const show=showSetup===null?!linked:showSetup;$("setup").classList.toggle("hidden",!show);$("showSetup").textContent=show?"Hide the setup steps":"Show the setup steps";
+}
+async function load(){
+ let s=null,l=null,c=null,ch=null;
+ try{s=JSON.parse(await rd("status.json"))}catch{}try{l=JSON.parse(await rd("link.json"))}catch{}
+ try{c=JSON.parse(await rd("callback.json"))}catch{}try{ticks=JSON.parse(await rd("setup.json"))||{}}catch{ticks={}}
+ try{ch=await rd("chat.json")}catch{}
+ let tk=null;try{tk=JSON.parse(await rd("token.json"))}catch{}
+ const bad=!!(tk&&tk.bad);$("badtok").classList.toggle("hidden",!bad);$("s2").classList.toggle("done",!bad);if(bad){showSetup=true}
+ if(c&&c.url){$("cb").textContent=c.url;$("cb").dataset.url=c.url}else if(!askedCb&&!busy){askedCb=true;act("callback",{})}
+ linked=!!(s&&s.linked&&s.toys&&s.toys.length);
+ $("big").textContent=linked?"Connected":"Not connected yet";
+ if(!$("msg").textContent||/^Connected:|^Ready:/.test($("msg").textContent))say(linked?"Ready: "+s.toys.join(", ")+".":"");
+ const fresh=l&&Date.now()-l.made<(linked?15*60e3:4*3600e3);
+ $("code").textContent=fresh&&l.code?l.code:"";
+ $("mk").textContent=linked?"Make a new code":"Make a code";
+ if(ch!==lastChat){lastChat=ch;let list=[];try{list=JSON.parse(ch)||[]}catch{}
+  $("log").replaceChildren(...list.map(bubble));$("log").scrollTop=$("log").scrollHeight}
+ if(ticks.os&&!$("osText").dataset.set){$("osText").dataset.set=1;pickOS(ticks.os)}
+ steps(!!(c&&c.url));lock()}
+$("cbcopy").onclick=async()=>{const u=$("cb").dataset.url;if(!u)return;try{await navigator.clipboard.writeText(u);say("Callback URL copied.")}catch{say("Select the address and copy it.")}};
+let resetArm=0;
+$("reset").onclick=()=>{if(Date.now()-resetArm>5000){resetArm=Date.now();$("reset").textContent="Tap again to reset the token";say("Kindroid will ask you for the Lovense developer token again.");setTimeout(()=>{if(Date.now()-resetArm>=5000)$("reset").textContent="Reset token"},5100);return}
+ resetArm=0;$("reset").textContent="Reset token";act("reset_token",{})};
+$("cbdone").onclick=()=>{ticks.cb=true;wr("setup.json",ticks);steps(true)};
+$("s4done").onclick=()=>{ticks.paired=true;wr("setup.json",ticks);steps(!!$("cb").dataset.url)};
+const OS={
+ ios:"Open Lovense Remote on your iPhone or iPad, turn on Bluetooth, and add your toy with the + button. Keep Lovense Remote open, in front, while you play: iPhones pause Bluetooth apps in the background.",
+ android:"Open Lovense Remote on your Android phone, allow Bluetooth and Nearby devices when asked, and add your toy with the + button. Keep Lovense Remote open; if your phone saves battery hard, let it run in the background (Settings › Apps › Lovense Remote › Battery).",
+ mac:"Open Lovense Remote on your Mac, allow Bluetooth when macOS asks, and add your toy. Keep it open while you play.",
+ win:"Open Lovense Remote on your PC and add your toy. Most PCs need Lovense's USB Bluetooth adapter plugged in, since built-in Bluetooth often doesn't reach Lovense toys. Keep it open while you play."};
+const pickOS=o=>{if(!OS[o])return;ticks.os=o;$("osText").textContent=OS[o];document.querySelectorAll("[data-os]").forEach(b=>b.classList.toggle("go",b.dataset.os===o))};
+document.querySelectorAll("[data-os]").forEach(b=>b.onclick=()=>{pickOS(b.dataset.os);wr("setup.json",ticks)});
+$("showSetup").onclick=()=>{showSetup=!(showSetup===null?!linked:showSetup);steps(!!$("cb").dataset.url)};
+$("str").oninput=()=>$("sv").textContent=$("str").value;
+$("act").onchange=()=>{const m=["Pump","Depth"].includes($("act").value)?3:20;$("str").max=m;if(+$("str").value>m)$("str").value=m;$("sv").textContent=$("str").value};
+$("mk").onclick=()=>act("link",{});$("rf").onclick=()=>act("refresh",{});
+$("start").onclick=()=>act("start",{action:$("act").value,strength:+$("str").value,seconds:Math.max(1,Math.min(60,+$("sec").value||10))});
+document.querySelectorAll("[data-p]").forEach(b=>b.onclick=()=>act("pattern",{kind:b.dataset.p,seconds:Math.max(1,Math.min(60,+$("sec").value||10))}));
+let stopTries=0;
+function sendStop(){wr("stop.json",{at:Date.now()});stopTries=Math.max(stopTries,1);busy=false;act("stop",{})}
+$("stop").onclick=()=>{stopTries=0;sendStop()};
+const send=()=>{const t=$("say").value.trim();if(!t)return;
+ const tmp={who:"me",text:t};$("log").append(bubble(tmp));$("log").scrollTop=$("log").scrollHeight;
+ if(act("chat",{text:t,...(kinId?{kin:kinId}:{})}))$("say").value=""};
+$("send").onclick=send;$("say").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send()}});
+$("clear").onclick=()=>act("clear_chat",{});
+parent.postMessage({kin:"kins"},"*");
+load();
+setInterval(()=>{if(!document.hidden&&!busy)load()},6000);
+</script>
+<script>
+window.KQ = {
+  name: "KinTouch",
+  ask: () => ({ title: "Stop and quit KinTouch?", text: "The toy is told to stop, then the app closes. Nothing runs until you open it again.", go: "Stop and quit" }),
+  waitMs: 20000,
+  before: () => new Promise((res) => { parent.postMessage({ kin: "files.write", path: "stop.json", body: JSON.stringify({ at: Date.now() }) }, "*"); let n = 0; const go = () => parent.postMessage({ kin: "action", name: "stop", input: {} }, "*"); addEventListener("message", function h(e) { const d = e.data || {}; if (d.kin === "action" && d.name === "stop") { if (!d.ok && ++n < 8) { setTimeout(go, 2500); return; } removeEventListener("message", h); res(); } }); go(); }),
+  closingText: "Telling the toy to stop.",
+  closedText: "The toy was told to stop and nothing is running. If it is still moving, use the stop in Lovense Remote or switch it off."
+};
+</script>
+<!-- kin-quit: a Quit button that stops this app and closes its screen -->
+<style>
+button.kq-btn.kq-btn{position:fixed;top:10px;right:10px;z-index:2147483000;min-height:34px;padding:4px 14px;border-radius:999px;border:1px solid #f18c9a99;background:#1b1a22e6;color:#f7b8c0;font:600 13px/1 system-ui,-apple-system,"Segoe UI",sans-serif;cursor:pointer;box-shadow:0 2px 10px #0006}
+button.kq-btn.kq-btn:hover{border-color:#f18c9a}
+button.kq-btn.kq-btn.kq-inline{position:static;z-index:auto;min-height:30px;box-shadow:none;margin-left:auto;flex:none}
+#kq-layer{position:fixed;inset:0;z-index:2147483001;display:grid;place-items:center;padding:16px;background:#0c0b11f5;color:#f3f2f7;font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+#kq-layer[hidden]{display:none}
+#kq-box{width:100%;max-width:430px;text-align:center}
+#kq-box h2{margin:0 0 8px;font-size:22px;line-height:1.2}
+#kq-box p{color:#bdbacb;margin:0 0 18px}
+#kq-box .kq-row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+#kq-box button{min-height:46px;padding:8px 18px;border-radius:12px;font:600 15px system-ui,-apple-system,"Segoe UI",sans-serif;cursor:pointer}
+#kq-box .kq-go{background:#a5394b;border:1px solid #f18c9a;color:#fff}
+#kq-box .kq-no{background:transparent;border:1px solid #5c5a68;color:#eceaf3}
+</style>
+<div id="kq-layer" role="dialog" aria-modal="true" aria-labelledby="kq-title" hidden><div id="kq-box"></div></div>
+<script>
+/* Quit: asks first, lets the app finish its own stop step (window.KQ.before), then stops every
+   timer, ignores any late answer from Kindroid and covers the screen. "Open again" reloads the screen. */
+(() => {
+  const C = window.KQ || {};
+  const NAME = C.name || document.title || "this app";
+  const L = document.getElementById("kq-layer"), B = document.getElementById("kq-box"), Q = [];
+  // window.KQ.after: elements to place a Quit button right after (e.g. each view's status bar); otherwise one floats top right.
+  const quitButton = (inline) => { const b = document.createElement("button"); b.type = "button"; b.className = "kq-btn" + (inline ? " kq-inline" : ""); b.textContent = "Quit"; b.setAttribute("aria-haspopup", "dialog"); b.onclick = ask; Q.push(b); return b; };
+  for (const sel of C.after || []) { const t = document.querySelector(sel); if (t) t.after(quitButton(true)); }
+  if (!Q.length) document.body.appendChild(quitButton(false));
+  let quit = false, closing = false;
+  window.addEventListener("message", (e) => { if (quit) e.stopImmediatePropagation(); }, true);
+  const mk = (text, cls, fn) => { const b = document.createElement("button"); b.type = "button"; b.className = cls; b.textContent = text; b.onclick = fn; return b; };
+  function show(title, text, buttons) {
+    B.replaceChildren();
+    const h = document.createElement("h2"); h.id = "kq-title"; h.textContent = title;
+    const p = document.createElement("p"); p.textContent = text;
+    const row = document.createElement("div"); row.className = "kq-row"; row.append(...buttons);
+    B.append(h, p, row); L.hidden = false;
+    if (buttons[0]) buttons[0].focus();
+  }
+  function ask() {
+    const a = typeof C.ask === "function" ? C.ask() : {};
+    show(a.title || "Quit " + NAME + "?",
+      a.text || "This stops anything in progress and closes the app. Nothing runs until you open it again. Copy anything you want to keep first.",
+      [mk(a.go || "Quit", "kq-go", doQuit), mk("Keep going", "kq-no", () => { L.hidden = true; })]);
+  }
+  async function doQuit() {
+    if (closing) return; closing = true;
+    show("Closing " + NAME + "…", C.closingText || "Stopping what it was doing.", []);
+    if (typeof C.before === "function") {
+      try { await Promise.race([Promise.resolve(C.before()), new Promise((r) => setTimeout(r, C.waitMs || 45000))]); } catch (e) {}
+    }
+    quit = true;
+    let id = setTimeout(() => {}, 0);
+    while (id > 0) { clearTimeout(id); clearInterval(id); id--; }
+    for (const n of document.body.children) if (n !== L && n.tagName !== "SCRIPT" && n.tagName !== "STYLE") n.style.display = "none";
+    show(NAME + " is closed", C.closedText || "Nothing is running. You can close this panel now.", [mk("Open again", "kq-no", () => location.reload())]);
+  }
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !L.hidden && !closing) L.hidden = true; });
+})();
+</script>
+<!-- /kin-quit -->

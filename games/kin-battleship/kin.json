@@ -1,0 +1,101 @@
+{
+  "kin": 1,
+  "name": "Kin Battleship",
+  "purpose": "Naval Battleship with animated seas, ships and sound. A hit earns another shot. Play the computer free (no credits), or your Kin (uses credits). Also playable in chat.",
+  "run": {
+    "entry": "node main.js",
+    "timeout": "1m"
+  },
+  "screens": [
+    {
+      "slot": "panel",
+      "entry": "screen/index.html",
+      "title": "Kin Battleship"
+    }
+  ],
+  "actions": [
+    {
+      "name": "battleship_new",
+      "description": "Start a new game of Kin Battleship with the person, right here in chat. Use when they want to play Battleship or a new game of it. A hit earns another shot; a miss passes the turn.",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "by": [
+        "kin",
+        "user"
+      ],
+      "reply": true
+    },
+    {
+      "name": "battleship_turn",
+      "description": "Use each time the person calls a cell like B5. A hit earns another shot: if they hit, pass only their next call as shot. If they miss, pass their call as shot and yours as my_shot. If you hit, fire again — pass follow-up cells in my_shot or the app aims them.",
+      "input": {
+        "type": "object",
+        "properties": {
+          "shot": {
+            "type": "string",
+            "maxLength": 12,
+            "description": "the person's call, like B5. If they just hit, this is their next shot and you don't fire yet."
+          },
+          "my_shot": {
+            "type": "string",
+            "maxLength": 80,
+            "description": "your call at their fleet, like G7, only when they miss or it's already your shot. If you hit you fire again: you can pass follow-up cells, like G7, G8."
+          }
+        },
+        "required": [
+          "shot"
+        ]
+      },
+      "by": [
+        "kin",
+        "user"
+      ],
+      "reply": true
+    },
+    {
+      "name": "battleship_board",
+      "description": "Use when the person wants to see the boards or the score of the Kin Battleship game.",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "by": [
+        "kin",
+        "user"
+      ]
+    },
+    {
+      "name": "battleship_quit",
+      "description": "End the Kin Battleship game without a winner, when the person wants to stop playing.",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "by": [
+        "kin",
+        "user"
+      ]
+    },
+    {
+      "name": "battleship_record",
+      "description": "Records a game finished on the Kin Battleship screen and tells the Kin how it went.",
+      "input": {
+        "type": "object",
+        "properties": {
+          "kin_id": {
+            "type": "string",
+            "maxLength": 80
+          }
+        }
+      },
+      "by": [
+        "user"
+      ]
+    }
+  ],
+  "grants": [
+    "kin:read"
+  ]
+}

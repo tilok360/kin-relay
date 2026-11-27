@@ -152,8 +152,25 @@ var rf=window.fetch;window.fetch=function(u){var k=typeof u==="string"?key(u):nu
     const kin = cfg.kins.find((k) => k.id === kinId) || (g && cfg.kins.find((k) => k.id === g.current)) || cfg.kins.find((k) => k.id === cfg.currentKin) || cfg.kins[0];
     if (!kin) return { ok: false, error: "Add a Kin on the Characters tab first (Solo needs nothing)." };
     if (!getKey()) return { ok: false, error: "Add your Kindroid API key in Settings first (Solo needs nothing)." };
-    try { return { ok: true, text: await KD.ask({ apiKey: getKey(), kin, question, style: cfg.askStyle, playerName: cfg.name }) }; }
+    const memory = slug ? await memoryFor(slug, kin.id) : "";
+    try { return { ok: true, text: await KD.ask({ apiKey: getKey(), kin, question, style: cfg.askStyle, playerName: cfg.name, memory }) }; }
     catch (e) { return { ok: false, error: e.message, kind: e.kind }; }
+  }
+  // What an app told a Kin (kin tell) goes in front of that Kin's next questions from the same app (as on the PC).
+  async function memoryFor(slug, kinId) {
+    let list = []; try { list = JSON.parse((await kvGet("tells:" + slug)) || "[]"); } catch {}
+    const t = Date.now();
+    return (Array.isArray(list) ? list : []).filter((x) => x && x.text && (!x.kin || x.kin === kinId) && t - Date.parse(x.at) < (x.ttl ? x.ttl : 72) * 3600000).slice(-8).map((x) => String(x.text)).join(" | ").slice(0, 900);
+  }
+  async function chatOf(kinId, slug, days) {
+    const g = slug ? S.gameKins(cfg, slug) : null;
+    const kin = cfg.kins.find((k) => k.id === kinId) || (g && cfg.kins.find((k) => k.id === g.current)) || cfg.kins.find((k) => k.id === cfg.currentKin) || cfg.kins[0];
+    if (!kin) return { ok: false, error: "Add a Kin on the Characters tab first." };
+    if (!getKey()) return { ok: false, error: "Add your Kindroid API key in Settings first." };
+    try {
+      const all = await KD.history({ apiKey: getKey(), kin, limit: 100 }), since = Date.now() - Math.max(1, days || 1) * 86400000;
+      return { ok: true, messages: all.filter((m) => !m.at || (m.at > 1e12 ? m.at : m.at * 1000) >= since).map((m) => ({ from: m.from, name: m.name, text: m.text, at: m.at })) };
+    } catch (e) { return { ok: false, error: e.message }; }
   }
 
   // ---------- runs (a Web Worker per run), tables (relay links) ----------
@@ -194,6 +211,7 @@ var rf=window.fetch;window.fetch=function(u){var k=typeof u==="string"?key(u):nu
           else if (m.t === "rm") writes = writes.then(() => filesDel(slug, m.path));
           else if (m.t === "tells") writes = writes.then(() => kvSet("tells:" + slug, m.text));
           else if (m.t === "ask") askKin(String(m.question || "").slice(0, 8000), String(m.kin || ""), String(m.slug || slug)).then((a) => { try { w.postMessage({ t: "askr", id: m.id, answer: a }); } catch {} });
+          else if (m.t === "chat") chatOf(String(m.kin || ""), String(m.slug || slug), Number(m.days) || 1).then((a) => { try { w.postMessage({ t: "askr", id: m.id, answer: a }); } catch {} });
           else if (m.t === "done") {
             const res = m.result || { ok: m.code === 0, summary: m.code === 0 ? "" : "The run stopped: " + String(m.stderr || "exit " + m.code).trim().split("\n").slice(-3).join(" ").slice(0, 300), next: null };
             this.schedule(res.next); end({ ok: !!res.ok, summary: res.summary || "" });

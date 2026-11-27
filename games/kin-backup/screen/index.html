@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kin Backup</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="scene" aria-hidden="true"><span class="orb o1"></span><span class="orb o2"></span></div><div id="vignette" aria-hidden="true"></div>
+<div id="app">
+  <header class="top">
+    <div class="brand">
+      <div class="logo" aria-hidden="true">🗄️</div>
+      <div><h1>Kin Backup</h1>
+      <p class="sub" id="count">Your saved Kins and prompts</p></div>
+    </div>
+    <div class="topbtns">
+      <button type="button" class="btn primary" id="btn-new">+ New Kin</button>
+      <button type="button" class="btn" id="btn-import" title="Restore from a backup file">Import</button>
+      <button type="button" class="btn" id="btn-export-all">Export all</button>
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Library">
+    <button type="button" class="tab" role="tab" id="tab-kins" aria-selected="true">Kins</button>
+    <button type="button" class="tab" role="tab" id="tab-prompts" aria-selected="false">Prompt library</button>
+  </nav>
+
+  <div class="notice" id="preview-notice" hidden>
+    Preview mode: this page is open outside Kindroid, so nothing is saved after you close it. Use Export to keep a copy.
+  </div>
+
+  <!-- Library view -->
+  <section id="view-list">
+    <div class="stats" id="stats" hidden></div>
+    <div class="backupbar" id="backupbar" hidden>
+      <p id="backupmsg"></p>
+      <div class="acts"><button type="button" class="btn primary" id="btn-backup-now">Back up now</button><button type="button" class="btn" id="btn-restore">Restore from file</button></div>
+    </div>
+    <div class="toolbar">
+      <input type="search" id="search" placeholder="Search names, tags, tagline, bio, Kin ID, social" autocomplete="off">
+      <select id="sort" aria-label="Sort">
+        <option value="az">A to Z</option>
+        <option value="za">Z to A</option>
+        <option value="new">Recently changed</option>
+        <option value="big">Largest first</option>
+      </select>
+    </div>
+    <div class="chips" id="filters" role="group" aria-label="Filter by tag"></div>
+    <div class="grid" id="skeleton" aria-hidden="true"><div class="skel"></div><div class="skel"></div><div class="skel"></div><div class="skel"></div></div>
+    <div class="grid" id="list"></div>
+    <div class="empty" id="empty" hidden>
+      <div class="ico" aria-hidden="true">🗄️</div>
+      <h2>No Kins saved yet</h2>
+      <p>Add a Kin with <strong>+ New Kin</strong>, or bring in a backup file with <strong>Import</strong>.</p>
+      <button type="button" class="btn primary" id="btn-empty-new">+ New Kin</button> <button type="button" class="btn" id="btn-empty-import">Import a file</button>
+    </div>
+    <details class="hist-list" id="blog" hidden><summary>Backup activity</summary><div id="blogrows"></div></details>
+  </section>
+
+  <!-- Card view -->
+  <section id="view-card" hidden></section>
+
+  <!-- Prompt library -->
+  <section id="view-prompts" hidden>
+    <div class="toolbar">
+      <input type="search" id="psearch" placeholder="Search titles, prompt text, Kins, tags" autocomplete="off">
+      <button type="button" class="btn primary" id="btn-new-prompt">+ New prompt</button>
+    </div>
+    <div class="toolbar">
+      <select id="pkin" aria-label="Kin"></select>
+      <select id="ptype" aria-label="Kind of prompt"></select>
+      <select id="psort" aria-label="Sort">
+        <option value="fav">Favorites first</option>
+        <option value="new">Recently changed</option>
+        <option value="az">A to Z</option>
+      </select>
+    </div>
+    <div class="chips" id="pfilters" role="group" aria-label="Filter prompts"></div>
+    <div class="plist" id="plist"></div>
+    <div class="empty" id="pempty" hidden>
+      <div class="ico" aria-hidden="true">✨</div>
+      <h2>No prompts saved yet</h2>
+      <p>Save your favorite selfie, video and avatar prompts with <strong>+ New prompt</strong>, link them to a Kin, and copy them whenever you need them. A codex file brings its prompts in through <strong>Import</strong>.</p>
+    </div>
+  </section>
+  <section id="view-prompt" hidden></section>
+</div>
+
+<!-- Dialog layer -->
+<div class="overlay" id="overlay" hidden>
+  <div class="dialog" id="dialog" role="dialog" aria-modal="true"></div>
+</div>
+<div id="toasts" role="status" aria-live="polite"></div>
+<div class="overlay lite" id="lightbox" hidden>
+  <figure class="litebox">
+    <img id="liteimg" alt="">
+    <figcaption>
+      <span id="litecap"></span>
+      <span class="liteacts">
+        <button type="button" class="btn small" id="litesave">Save to device</button>
+        <button type="button" class="btn small" id="liteclose">Close</button>
+      </span>
+    </figcaption>
+  </figure>
+</div>
+
+
+<script src="app.js"></script>
+<script>window.KQ = { name: "Kin Backup", after: ["#btn-export-all"],
+  ask: () => ({ text: "This closes Kin Backup. Kins you already saved stay saved; an edit you haven't saved yet is lost." }),
+  before: () => window.kinBackupIdle && window.kinBackupIdle() };</script>
+<!-- kin-quit: a Quit button that stops this app and closes its screen -->
+<style>
+button.kq-btn.kq-btn{position:fixed;top:10px;right:10px;z-index:2147483000;min-height:34px;padding:4px 14px;border-radius:999px;border:1px solid #f18c9a99;background:#1b1a22e6;color:#f7b8c0;font:600 13px/1 system-ui,-apple-system,"Segoe UI",sans-serif;cursor:pointer;box-shadow:0 2px 10px #0006}
+button.kq-btn.kq-btn:hover{border-color:#f18c9a}
+button.kq-btn.kq-btn.kq-inline{position:static;z-index:auto;min-height:30px;box-shadow:none;margin-left:auto;flex:none}
+#kq-layer{position:fixed;inset:0;z-index:2147483001;display:grid;place-items:center;padding:16px;background:#0c0b11f5;color:#f3f2f7;font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+#kq-layer[hidden]{display:none}
+#kq-box{width:100%;max-width:430px;text-align:center}
+#kq-box h2{margin:0 0 8px;font-size:22px;line-height:1.2}
+#kq-box p{color:#bdbacb;margin:0 0 18px}
+#kq-box .kq-row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+#kq-box button{min-height:46px;padding:8px 18px;border-radius:12px;font:600 15px system-ui,-apple-system,"Segoe UI",sans-serif;cursor:pointer}
+#kq-box .kq-go{background:#a5394b;border:1px solid #f18c9a;color:#fff}
+#kq-box .kq-no{background:transparent;border:1px solid #5c5a68;color:#eceaf3}
+</style>
+<div id="kq-layer" role="dialog" aria-modal="true" aria-labelledby="kq-title" hidden><div id="kq-box"></div></div>
+<script>
+/* Quit: asks first, lets the app finish its own stop step (window.KQ.before), then stops every
+   timer, ignores any late answer from Kindroid and covers the screen. "Open again" reloads the screen. */
+(() => {
+  const C = window.KQ || {};
+  const NAME = C.name || document.title || "this app";
+  const L = document.getElementById("kq-layer"), B = document.getElementById("kq-box"), Q = [];
+  // window.KQ.after: elements to place a Quit button right after (e.g. each view's status bar); otherwise one floats top right.
+  const quitButton = (inline) => { const b = document.createElement("button"); b.type = "button"; b.className = "kq-btn" + (inline ? " kq-inline" : ""); b.textContent = "Quit"; b.setAttribute("aria-haspopup", "dialog"); b.onclick = ask; Q.push(b); return b; };
+  for (const sel of C.after || []) { const t = document.querySelector(sel); if (t) t.after(quitButton(true)); }
+  if (!Q.length) document.body.appendChild(quitButton(false));
+  let quit = false, closing = false;
+  window.addEventListener("message", (e) => { if (quit) e.stopImmediatePropagation(); }, true);
+  const mk = (text, cls, fn) => { const b = document.createElement("button"); b.type = "button"; b.className = cls; b.textContent = text; b.onclick = fn; return b; };
+  function show(title, text, buttons) {
+    B.replaceChildren();
+    const h = document.createElement("h2"); h.id = "kq-title"; h.textContent = title;
+    const p = document.createElement("p"); p.textContent = text;
+    const row = document.createElement("div"); row.className = "kq-row"; row.append(...buttons);
+    B.append(h, p, row); L.hidden = false;
+    if (buttons[0]) buttons[0].focus();
+  }
+  function ask() {
+    const a = typeof C.ask === "function" ? C.ask() : {};
+    show(a.title || "Quit " + NAME + "?",
+      a.text || "This stops anything in progress and closes the app. Nothing runs until you open it again. Copy anything you want to keep first.",
+      [mk(a.go || "Quit", "kq-go", doQuit), mk("Keep going", "kq-no", () => { L.hidden = true; })]);
+  }
+  async function doQuit() {
+    if (closing) return; closing = true;
+    show("Closing " + NAME + "…", C.closingText || "Stopping what it was doing.", []);
+    if (typeof C.before === "function") {
+      try { await Promise.race([Promise.resolve(C.before()), new Promise((r) => setTimeout(r, C.waitMs || 45000))]); } catch (e) {}
+    }
+    quit = true;
+    let id = setTimeout(() => {}, 0);
+    while (id > 0) { clearTimeout(id); clearInterval(id); id--; }
+    for (const n of document.body.children) if (n !== L && n.tagName !== "SCRIPT" && n.tagName !== "STYLE") n.style.display = "none";
+    show(NAME + " is closed", C.closedText || "Nothing is running. You can close this panel now.", [mk("Open again", "kq-no", () => location.reload())]);
+  }
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !L.hidden && !closing) L.hidden = true; });
+})();
+</script>
+<!-- /kin-quit -->
+</body>
+</html>

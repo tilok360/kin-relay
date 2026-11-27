@@ -1,0 +1,9 @@
+{
+ "level": "full",
+ "tested": [
+  "A round starts, your Kin asks questions, answers go back to it"
+ ],
+ "limits": [
+  "Checking a guess on Wikipedia/Wikidata needs internet (not checked against the live sites in testing)."
+ ]
+}

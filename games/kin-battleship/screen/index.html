@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kin Battleship</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="bgart" aria-hidden="true"></div>
+<div id="bgshade" aria-hidden="true"></div>
+<canvas id="fx" aria-hidden="true"></canvas>
+
+<div id="app">
+  <header class="top">
+    <button class="brand" id="home" type="button" aria-label="Kin Battleship, back to the menu">
+      <span class="crest" aria-hidden="true"><svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="18" fill="none" stroke="currentColor" stroke-width="2"/><path d="M20 7v24M12 13h16M9 22c1 7 6 11 11 11s10-4 11-11" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><circle cx="20" cy="8" r="2.6" fill="currentColor"/></svg></span>
+      <span class="bt"><b>KIN BATTLESHIP</b><small id="subline">Naval command</small></span>
+    </button>
+    <div class="sound">
+      <button class="icon" id="mute" type="button" aria-label="Sound on" title="Sound (M)"><span id="muteicon">🔊</span></button>
+      <input type="range" id="vol" min="0" max="100" value="70" aria-label="Volume">
+    </div>
+  </header>
+
+  <!-- ================= MENU ================= -->
+  <section id="menu" class="screen">
+    <div class="hero">
+      <p class="kicker">Fleet command · Grid 10 × 10</p>
+      <h1>Sink the fleet<br>before it sinks yours.</h1>
+      <p class="lede">Place five warships, call your shots, and watch the shells fall. A hit means you fire again.</p>
+    </div>
+
+    <div id="resumes" class="resumes"></div>
+
+    <div class="modes">
+      <article class="mode solo">
+        <div class="mtop"><h2>Solo</h2><span class="pill free">Free · no credits</span></div>
+        <p class="mdesc">Play the computer. The whole game runs on this screen: your Kin isn't asked anything, and nothing uses Kindroid credits or the app's runs.</p>
+        <div class="levels" role="radiogroup" aria-label="Computer difficulty" id="sololevels"></div>
+        <button class="btn big" id="playsolo" type="button">Deploy fleet <span aria-hidden="true">→</span></button>
+      </article>
+
+      <article class="mode kinmode">
+        <div class="mtop"><h2 id="kintitle">Play your Kin</h2><span class="pill paid">Uses Kindroid credits</span></div>
+        <p class="mdesc" id="kinbar">Looking for your Kin…</p>
+        <div class="opts" role="radiogroup" aria-label="How your Kin plays" id="kinmodes"></div>
+        <label class="inl">The app's aim <select id="level"><option value="beginner">Beginner</option><option value="easy">Easy</option><option value="normal">Normal</option><option value="hard">Hard</option></select></label>
+        <p class="fine">Each question to your Kin takes a few seconds and uses Kindroid credits, like any message. Every finished game also saves its result with a short run, which counts toward the app's monthly allowance. You can also play in chat: ask your Kin for a game of Kin Battleship and call shots like B5.</p>
+        <button class="btn big alt" id="playkin" type="button">Challenge your Kin <span aria-hidden="true">→</span></button>
+      </article>
+    </div>
+
+    <div class="panels">
+      <article class="panel"><h3>Service record</h3><div id="records"></div></article>
+      <article class="panel"><h3>Achievements <small id="achsum"></small></h3><div class="achs" id="achs"></div></article>
+    </div>
+  </section>
+
+  <!-- ================= SETUP ================= -->
+  <section id="setup" class="screen" hidden>
+    <div class="shead">
+      <div><p class="kicker" id="setupkicker">Solo · Normal</p><h2>Deploy your fleet</h2></div>
+      <p class="hint" id="setuphint">Drag ships to move them. Tap a ship and press R (or Rotate) to turn it.</p>
+    </div>
+    <div class="setupwrap">
+      <div class="boardbox big" id="setupboard"></div>
+      <aside class="dock">
+        <h3>Fleet</h3>
+        <ul class="roster" id="roster"></ul>
+        <div class="dockbtns">
+          <button class="btn ghost" id="rotate" type="button">⟳ Rotate <kbd>R</kbd></button>
+          <button class="btn ghost" id="shuffle" type="button">⚄ Random</button>
+        </div>
+        <button class="btn big" id="start" type="button">Begin battle <span aria-hidden="true">→</span></button>
+        <button class="link" id="backmenu" type="button">← Back to menu</button>
+        <p class="fine kbd">Keyboard: Tab to a ship, arrows move it, R rotates.</p>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ================= BATTLE ================= -->
+  <section id="battle" class="screen" hidden>
+    <div class="hud">
+      <div class="hcell"><span class="hl">Opponent</span><b id="foename">Computer</b><small id="foetag"></small></div>
+      <div class="hcell turn" id="turnbox"><span class="hl">Status</span><b id="turntext">Your turn</b></div>
+      <div class="hcell"><span class="hl">Shots</span><b id="hshots">0</b></div>
+      <div class="hcell"><span class="hl">Hits</span><b id="hhits">0</b></div>
+      <div class="hcell"><span class="hl">Accuracy</span><b id="hacc">–</b></div>
+      <div class="hcell acts"><button class="btn ghost sm" id="quit" type="button">Surrender</button></div>
+    </div>
+    <div class="arena">
+      <div class="mainb">
+        <div class="btitle"><h3>Enemy waters</h3><div class="fleetbar" id="foefleet" aria-label="Enemy ships"></div></div>
+        <div class="boardbox big" id="foeboard"></div>
+      </div>
+      <aside class="sideb">
+        <div class="btitle"><h3>Your fleet</h3><div class="fleetbar" id="youfleet" aria-label="Your ships"></div></div>
+        <div class="boardbox small" id="youboard"></div>
+        <div class="say" id="say" aria-live="polite"></div>
+        <div class="comms"><h4>Comms log</h4><ol id="log"></ol></div>
+      </aside>
+    </div>
+  </section>
+</div>
+
+<div id="banner" aria-hidden="true"><span id="bannertext"></span></div>
+
+<div id="result" class="overlay" hidden role="dialog" aria-modal="true" aria-labelledby="rtitle">
+  <div class="rcard">
+    <p class="kicker" id="rkicker"></p>
+    <h2 id="rtitle">Victory</h2>
+    <p id="rline"></p>
+    <div class="rstats" id="rstats"></div>
+    <div class="rbtns"><button class="btn big" id="again" type="button">Play again</button><button class="btn ghost" id="tomenu" type="button">Menu</button></div>
+  </div>
+</div>
+
+<div id="confirm" class="overlay" hidden role="dialog" aria-modal="true" aria-labelledby="ctitle">
+  <div class="rcard small"><h2 id="ctitle">Surrender?</h2><p id="ctext">This game will count as a loss.</p>
+    <div class="rbtns"><button class="btn danger" id="cyes" type="button">Surrender</button><button class="btn ghost" id="cno" type="button">Keep fighting</button></div></div>
+</div>
+
+<div id="toasts" aria-live="polite"></div>
+
+<script src="bs.js"></script>
+<script src="art.js"></script>
+<script src="fx.js"></script>
+<script src="game.js"></script>
+</body>
+</html>

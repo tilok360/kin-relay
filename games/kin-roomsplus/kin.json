@@ -1,0 +1,45 @@
+{
+  "kin": 1,
+  "name": "kin-roomsPlus",
+  "purpose": "Private SFW group chat for invited people, their Kins and photos; filters what others send. Host rules guide Kins, shown first. Runs briefly per message (credits); voice/selfies/Suggest: asker pays.",
+  "triggers": [
+    {
+      "on": "inbound",
+      "via": "webhook",
+      "id": "room"
+    }
+  ],
+  "run": {
+    "entry": "node main.js",
+    "timeout": "5m"
+  },
+  "screens": [
+    {
+      "slot": "panel",
+      "entry": "screen/index.html",
+      "title": "Rooms"
+    }
+  ],
+  "grants": [
+    "kin:read",
+    "kin:voice",
+    "kin:picture",
+    "inbound:room",
+    "net:in.kinusercontent.com"
+  ],
+  "actions": [
+    {
+      "name": "wake",
+      "description": "Open kin-roomsPlus and see how the shared room stands: who is there and the latest messages. Use when the person wants to go to the room or asks what is happening there.",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "by": [
+        "user",
+        "kin"
+      ],
+      "reply": true
+    }
+  ]
+}

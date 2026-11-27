@@ -1,0 +1,94 @@
+{
+  "kin": 1,
+  "name": "Chess Clash",
+  "purpose": "Animated battle chess in a torch-lit castle hall: armored pieces march, and every capture is a fight. Play the computer free (no credits), or your Kin (uses credits).",
+  "run": {
+    "entry": "node main.js",
+    "timeout": "1m"
+  },
+  "screens": [
+    {
+      "slot": "panel",
+      "entry": "screen/index.html",
+      "title": "Chess Clash"
+    }
+  ],
+  "actions": [
+    {
+      "name": "clash_record",
+      "description": "Records a Chess Clash game finished on the screen and tells the Kin how it went.",
+      "input": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "string",
+            "enum": [
+              "you",
+              "kin",
+              "draw"
+            ]
+          },
+          "detail": {
+            "type": "string",
+            "maxLength": 300
+          },
+          "fights_you": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 99
+          },
+          "fights_kin": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 99
+          },
+          "achievements": {
+            "type": "array",
+            "maxItems": 30,
+            "items": {
+              "type": "object",
+              "properties": {
+                "who": {
+                  "type": "string",
+                  "enum": [
+                    "you",
+                    "kin"
+                  ]
+                },
+                "id": {
+                  "type": "string",
+                  "maxLength": 30
+                }
+              }
+            }
+          },
+          "kin_id": {
+            "type": "string",
+            "maxLength": 80
+          }
+        },
+        "required": [
+          "result"
+        ]
+      },
+      "by": [
+        "user"
+      ]
+    },
+    {
+      "name": "clash_score",
+      "description": "Use when the person asks about your Chess Clash record or achievements against them.",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "by": [
+        "kin",
+        "user"
+      ]
+    }
+  ],
+  "grants": [
+    "kin:read"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+ "level": "mostly",
+ "tested": [
+  "The screen and its setup steps open",
+  "Your Lovense developer token goes in Settings > App sign-ins and is only sent to api.lovense-api.com"
+ ],
+ "limits": [
+  "Needs a relay address (Settings) for Lovense to reach it, and your own Lovense developer token.",
+  "Not tested with a real Lovense toy or account."
+ ],
+ "web": {
+  "level": "limited",
+  "limits": [
+   "On the phone/web version sign-ins aren't available: use the Windows, Mac or Android app."
+  ]
+ }
+}

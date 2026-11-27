@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chess Clash</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<canvas id="stage" tabindex="0" role="application" aria-label="Chess board. Arrow keys move the cursor, Enter picks a piece or a square, Escape cancels or skips a fight."></canvas>
+<div id="live" class="sr" aria-live="polite"></div>
+
+<header class="top">
+  <button class="brand" id="home" type="button" aria-label="Chess Clash, back to the menu">
+    <span class="crest" aria-hidden="true">♜</span><span class="bt"><b>CHESS CLASH</b><small id="subline">The great hall</small></span>
+  </button>
+  <div class="sound">
+    <button class="icon" id="mute" type="button" aria-label="Sound on" title="Sound (M)"><span id="muteicon">🔊</span></button>
+    <input type="range" id="vol" min="0" max="100" value="70" aria-label="Volume">
+  </div>
+</header>
+
+<!-- ================= MENU ================= -->
+<section id="menu" class="screen">
+  <div class="hero">
+    <p class="kicker">A torch-lit hall · Armored pieces · Every capture a fight</p>
+    <h1>Chess Clash</h1>
+    <p class="lede">Your pieces march, gallop and glide across the board, and every capture is a duel.</p>
+  </div>
+  <div id="resumes" class="resumes"></div>
+  <div class="modes">
+    <article class="mode solo">
+      <div class="mtop"><h2>Solo</h2><span class="pill free">Free · no credits</span></div>
+      <p class="mdesc">Play the computer. The whole game runs on this screen: your Kin isn't asked anything, and it uses no Kindroid credits and none of the app's runs.</p>
+      <div class="levels" role="radiogroup" aria-label="Computer difficulty" id="sololevels"></div>
+      <div class="colors" role="radiogroup" aria-label="Your pieces" id="colors"></div>
+      <button class="btn big" id="playsolo" type="button">Take the field <span aria-hidden="true">→</span></button>
+    </article>
+    <article class="mode kinmode">
+      <div class="mtop"><h2 id="kintitle">Play your Kin</h2><span class="pill paid">Uses Kindroid credits</span></div>
+      <p class="mdesc" id="kinbar">Looking for your Kin…</p>
+      <div class="opts" role="radiogroup" aria-label="How your Kin plays" id="kinmodes"></div>
+      <label class="inl">The app's strength <select id="level"><option value="beginner">Beginner</option><option value="easy">Easy</option><option value="normal">Normal</option><option value="hard">Hard</option></select></label>
+      <p class="fine">Each question to your Kin takes a few seconds and uses Kindroid credits, like any message. Every finished game is also saved with one short run (clash_record), which counts toward the app's monthly allowance. You and your Kin take turns with the light pieces.</p>
+      <button class="btn big alt" id="playkin" type="button">Challenge your Kin <span aria-hidden="true">→</span></button>
+    </article>
+  </div>
+  <div class="panels">
+    <article class="panel"><h3>Fights</h3>
+      <div class="seg" role="radiogroup" aria-label="Capture fights and walking" id="animseg"></div>
+      <p class="fine">Full plays every walk and every capture fight. Fast plays shorter fights. Off moves pieces straight away. Click, tap or press Esc to skip a fight.</p>
+    </article>
+    <article class="panel"><h3>Service record</h3><div id="records"></div></article>
+    <article class="panel wide"><h3>Achievements <small id="achsum"></small></h3><div class="achs" id="achs"></div></article>
+  </div>
+</section>
+
+<!-- ================= GAME ================= -->
+<section id="game" class="screen" hidden>
+  <div class="hud">
+    <div class="pcard foe"><div class="pn"><b id="foename">Computer</b><small id="foetag"></small></div><div class="tray" id="trayFoe" aria-label="Pieces the opponent has taken"></div></div>
+    <div class="status" id="statusbox"><span class="dot"></span><b id="status">Your move</b></div>
+    <div class="pcard you"><div class="pn"><b>You</b><small id="youtag"></small></div><div class="tray" id="trayYou" aria-label="Pieces you have taken"></div></div>
+  </div>
+  <div id="boardarea" aria-hidden="true"></div>
+  <aside class="side">
+    <div class="bubble" id="bubble" hidden></div>
+    <div class="moves"><h4>Moves</h4><ol id="moves"></ol></div>
+    <div class="ctrls">
+      <button class="btn ghost sm" id="undo" type="button" title="Undo (U)">↶ Undo</button>
+      <button class="btn ghost sm" id="flip" type="button" title="Flip the board (F)">⇅ Flip</button>
+      <label class="anim">Fights <select id="animsel"><option value="full">Full</option><option value="fast">Fast</option><option value="off">Off</option></select></label>
+      <button class="btn ghost sm" id="resign" type="button">⚑ Resign</button>
+      <button class="btn ghost sm" id="tomenu2" type="button">☰ Menu</button>
+    </div>
+  </aside>
+  <button class="skip" id="skip" type="button" hidden>Skip ▸</button>
+</section>
+
+<div id="promo" class="overlay" hidden role="dialog" aria-modal="true" aria-labelledby="ptitle">
+  <div class="rcard small"><h2 id="ptitle">Promote your pawn</h2><div class="picks" id="promopick"></div></div>
+</div>
+<div id="result" class="overlay" hidden role="dialog" aria-modal="true" aria-labelledby="rtitle">
+  <div class="rcard"><p class="kicker" id="rkicker"></p><h2 id="rtitle">Checkmate</h2><p id="rline"></p><div class="rstats" id="rstats"></div>
+    <div class="rbtns"><button class="btn big" id="again" type="button">Play again</button><button class="btn ghost" id="tomenu" type="button">Menu</button></div></div>
+</div>
+<div id="confirm" class="overlay" hidden role="dialog" aria-modal="true" aria-labelledby="ctitle">
+  <div class="rcard small"><h2 id="ctitle">Resign?</h2><p id="ctext"></p>
+    <div class="rbtns"><button class="btn danger" id="cyes" type="button">Resign</button><button class="btn ghost" id="cno" type="button">Keep fighting</button></div></div>
+</div>
+<div id="toasts" aria-live="polite"></div>
+
+<script src="engine.js"></script>
+<script src="ai.js"></script>
+<script src="rigs.js"></script>
+<script src="sfx.js"></script>
+<script src="scene.js"></script>
+<script src="game.js"></script>
+</body>
+</html>

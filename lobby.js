@@ -75,7 +75,7 @@
     d.showModal(); (row.lastChild || d).focus();
   }
   function list(head, items) { const out = []; if (!items || !items.length) return out; out.push(el("h5", null, head)); const ul = el("ul"); for (const t of items) ul.append(el("li", null, t)); out.push(ul); return out; }
-  function reportNodes(r) { return [...list("Works here", r.works), ...list("Kin Relay stands in for Kindroid", r.shim), ...list("Won't work outside Kindroid", r.warnings)]; }
+  function reportNodes(r) { return [...list("Works here", r.works), ...list("Tested in Kin Relay", r.tested || []), ...list("Kin Relay stands in for Kindroid", r.shim), ...list("Won't work outside Kindroid", r.warnings)]; }
   function showReport(name, r) { dialog(name, reportNodes(r || { works: [], shim: [], warnings: [] }), [["Close", null, "primary"]]); }
 
   // ---------- adding a game ----------
@@ -348,6 +348,24 @@
   }
 
   // ---------- settings ----------
+  // sign-ins an app asks for (grants like "secret:twitchchat@irc-ws.chat.twitch.tv"): typed here, kept on this device only
+  function renderSecrets() {
+    const list = state.secrets || [], panel = $("secretsPanel"), box = $("secretsList");
+    panel.hidden = !list.length; if (!list.length) return;
+    if (box.contains(document.activeElement) && document.activeElement.tagName === "INPUT") return; // don't wipe what is being typed
+    box.replaceChildren();
+    for (const sc of list) {
+      const row = el("div", "secretrow"), id = "sec-" + sc.slug + "-" + sc.name;
+      const lab = el("label", null, `${sc.app}: ${sc.name} (for ${sc.host})`); lab.htmlFor = id;
+      const inp = el("input"); inp.type = "password"; inp.id = id; inp.autocomplete = "off"; inp.spellcheck = false; inp.placeholder = sc.set ? "Saved. Paste a new one to replace it" : "Paste it here";
+      const save = el("button", "primary", "Save"), clr = el("button", "ghost danger", "Remove"); clr.hidden = !sc.set;
+      const res = el("span", "hint", sc.set ? "Saved." : "Not saved yet.");
+      save.onclick = async () => { if (!inp.value.trim()) { res.textContent = "Paste it first."; return; } const r = await api("/api/secret", { slug: sc.slug, name: sc.name, value: inp.value }); if (r.state) { state = r.state; inp.value = ""; renderSecrets(); toast("Saved."); } else res.textContent = r.error || "Couldn't save."; };
+      clr.onclick = async () => { const r = await api("/api/secret", { slug: sc.slug, name: sc.name, value: "" }); if (r.state) { state = r.state; renderSecrets(); toast("Removed."); } };
+      const line = el("div", "row"); line.append(inp, save, clr); inp.classList.add("grow");
+      row.append(lab, line, res); box.append(row);
+    }
+  }
   function renderSettings(full) {
     const s = state.settings;
     $("dataFolder").textContent = state.dataFolder;
@@ -373,6 +391,7 @@
     dot.className = "dot " + (st === "online" ? "on" : st === "error" ? "err" : st === "off" ? "" : "warn");
     $("relayTxt").textContent = st === "online" ? "Relay connected" : st === "error" ? "Relay problem" : st === "off" ? "No relay" : "Relay connecting";
     if (st === "error" && state.relayWhy) msg("relayMsg", state.relayWhy, false);
+    renderSecrets();
     // checklists (Games page and Welcome)
     const cl = $("checklist"); cl.replaceChildren();
     const item = (ok, text, href) => { const f = el("div", "fact"); const t = el("span", "tag " + (ok ? "free" : "tables"), ok ? "Ready" : "To do"); const x = href && !ok ? el("a", null, text) : el("span", null, text); if (href && !ok) x.href = href; f.append(t, x); cl.append(f); };
