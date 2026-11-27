@@ -50,13 +50,14 @@ It's a free web app, so there's no App Store and no download to approve. iPhone 
 ### What works on each device
 | | Windows / Mac | Android / iPhone |
 |---|---|---|
-| The four built-in games, solo | yes | yes |
+| The 16 games and apps that come with it | yes | yes (Co-Host and KinTouch need the Windows, Mac or Android app) |
 | Play with your Kin (your key, Kindroid's API) | yes | yes |
 | Characters, Import and Export | yes | yes |
 | Add a game from a "Get its code" file | drag and drop | tap to pick the file |
 | Tables with friends | yes (also host a relay on your PC) | yes, while the app is open on screen |
 | Added games that wait for your Kin to answer in a single blocking step | yes | no (the games that come with Kin Relay are fine) |
 | Run a relay for others on your device | yes | no (use the free Cloudflare relay) |
+| Apps that stay on (Co-Host), app sign-ins, daily updates | yes, while Kin Relay is open | Android app: yes while open; web/iPhone: daily updates when you open the app, no sign-ins |
 
 On a phone or in the web app there's no PC behind it: the games run inside the app, your API key stays in that app's storage on the device, and nothing but Kindroid's API and your relay is contacted. Kindroid's API accepts calls straight from the app, so no go-between server is involved and your key is never sent anywhere else.
 
@@ -90,9 +91,30 @@ Every game gets **all** your saved Kins (each needs an AI ID, which Kin Relay ch
 ### Table chat: the Kins talk back
 At a Kin Hold'em or Kin Casino table, anyone's chat line (yours, a friend's, or a Kin's) can get a reply from a Kin, so the table talks like a table. Whoever you speak to (`@Name`, or "Name, ..." at the start) answers first; otherwise the Kin that has been quiet longest chimes in, and a Kin's reply can start one more reply. It never goes past **3 Kin lines in a row** without a person speaking, each Kin rests a bit between lines, and Kin Relay waits out Kindroid's limit of **10 requests per 30 seconds** while **"X is typing..."** shows. After a big hand one Kin may react. Each Kin speaks through its **owner's** key on the owner's PC. If a Kin can't answer (no key, wrong key, offline, hourly limit) the chat says so. The OOC tab is people only: a Kin never sees it. Your name at tables comes from Settings (or the persona in your Kindroid export when you import). The **Kins** panel in Hold'em can turn Kin chat off, or make a Kin's lines wait for your OK.
 
+### Rooms, Kin-manatee and group chat
+**kin-roomsPlus** is a chat room for people and their Kins. Host a room, share the invite code, and friends join from their own Kin Relay through the relay. Every Kin in the room can answer anyone (a person or another Kin) the same way as at the card tables: the Kin you name answers first, at most 3 Kin lines in a row, **"X is typing..."** on every screen, and a plain reason in the chat if a Kin can't answer. Each Kin answers through its own person's key. What the room tells a Kin is kept on your PC and given to that Kin with its next questions in that app. Kindroid's API has no voice or picture endpoint, so Kin voice notes and selfies can't be made here; **Read aloud** uses your device's own voice instead. **Cards Against Kin-manatee** table chat works the same way (Solo, My Kins and hosted tables).
+
+### The apps that come with Kin Relay
+Each card's **What works here** says how well it works here and what was tested.
+
+| App | Here | Notes |
+|---|---|---|
+| Kin Hold'em, Kin Casino | works fully | group table chat |
+| Cards Against Kin-manatee | works fully | group table chat, your name instead of "Host" |
+| Kin Games: Table & Arcade, Board & Cards | works fully | Kins talk with each move (no table chat in these) |
+| Kin Battleship, Chess Clash | works fully | solo free, or your Kin plays through your key |
+| Kin Guesses Who | works fully | guesses are checked on Wikipedia (internet) |
+| Kin Backup, Kin Workshop, Vignette Prompt Workshop, Vignette Prompt Partner | works fully | exports save to Downloads |
+| kin-roomsPlus | mostly | no Kin voice notes or selfies (not in Kindroid's API) |
+| Sky Watch | mostly | daily update only while Kin Relay is open (catches up when opened) |
+| Kin Co-Host | mostly | stays connected while Kin Relay is open; Twitch/Joystick sign-ins go in Settings > App sign-ins; not tested live |
+| KinTouch | mostly | needs your Lovense developer token (App sign-ins) and a relay; not tested with a real toy |
+
+**App sign-ins** (Settings): an app that needs a sign-in (a Twitch chat token, a Lovense token) asks for it here. It's saved only on your PC and is only ever sent to the one site the app named.
+
 ## What's inside
 
-- **Games that come with it:** Kin Casino, Kin Hold'em, Kin Games Table & Arcade, and Kin Games Board & Cards.
+- **Games and apps that come with it:** the 16 above (tilok360's Kindroid apps).
 - **Drag and drop any Kindroid app:** in Kindroid, open an app's menu and tap **Get its code**, then drag the `.gz` onto the Kin Relay window. Kin Relay checks it safely: no files outside its folder, size limits, and nothing in it runs while it's added. It then tells you what works here and what can't work outside Kindroid.
 - **Play with your Kin:** your Kin is asked through Kindroid's public API with your own key. These are normal Kin messages, not Apps runs.
 - **Tables with friends:** everyone uses the same free relay, which you can run on your PC, on a free tunnel, or on a free Cloudflare Workers or Render host. The host deals with secure random numbers, hidden cards go only to their owner, and each player's Kin uses that player's own key on their own PC. See `README.txt`, "How to host".
@@ -104,10 +126,10 @@ At a Kin Hold'em or Kin Casino table, anyone's chat line (yours, a friend's, or 
 - Kindroid allows 10 API requests every 30 seconds per account, and Kin Relay waits its turn.
 - In "In your chat" mode, the game's questions and your Kin's answers show up in your chat with that Kin. "Quietly" mode needs a share code and a subscription.
 - It isn't known for sure whether Kindroid counts API messages against anything, or what its terms say about tools like this. Check your account after a first session, and read Kindroid's current terms.
-- Your Kin's voice, selfies, messages into your Kindroid chat, and scheduled runs don't work outside Kindroid.
+- Your Kin's voice and selfies don't work outside Kindroid (its API has no voice or picture endpoint). Apps can read your recent chat with a Kin (`kin chat`) but can't post into it. Scheduled and always-on apps run only while Kin Relay is open.
 
 ## For app makers and developers
 
 - `ADAPTER-GUIDE.md`: how Kin Relay runs Kindroid apps (the screen bridge, the `kin` command shim, and the relay protocol).
 - `server.js` is the app (plain Node.js with no packages). `relay.js` is the relay. `cloudflare/` has the Workers relay. `desktop/` builds the Windows installer and the Mac zips (Electron and electron-builder; `cd desktop && npm install && node build.js dist` or `node build.js mac`; the Windows build needs wine on Linux, and `desktop/zipapp.py` zips a Mac app). `web/` builds the web and iPhone app (`node web/build.js`, output in `web-dist/`, which can be hosted anywhere static), and `android/` builds the Android app (`android/build.sh`, needs a JDK and the Android SDK command-line tools; set `KR_KEYSTORE` to your own key file, and keep that file safe, because updates need the same key).
-- Tests are in `dev/`: `smoke.py` (headless Chrome: solo, Kin via a mock API, a two-player table, drag-and-drop), `desktop-ui.test.py` (the Electron window), `chario.test.js` and `chars-ui.test.py` (Import and Export, with made-up fixtures in `dev/fixtures/`), `kins-in-games.test.py` and `web-kins.py` (44 Kins imported, every game lists them), `table-chat.test.py` (Kins answer in Chat at Hold'em and Casino tables, one PC and two PCs, against a mock API), `web-smoke.py` (the phone/web app as two phones), `installer.test.js`, and `relay-protocol.test.js <relay URL>`. They never contact Kindroid. The drag-and-drop tests need a "Get its code" download saved as `samples/kindroid-get-code-sample.gz`, which isn't included here.
+- Tests are in `dev/`: `smoke.py` (headless Chrome: solo, Kin via a mock API, a two-player table, drag-and-drop), `desktop-ui.test.py` (the Electron window), `chario.test.js` and `chars-ui.test.py` (Import and Export, with made-up fixtures in `dev/fixtures/`), `kins-in-games.test.py` and `web-kins.py` (44 Kins imported, every game lists them), `table-chat.test.py` (Kins answer in Chat at Hold'em and Casino tables, one PC and two PCs, against a mock API), `rooms-chat.test.py` and `manatee-chat.test.py` (group chat in kin-roomsPlus and Kin-manatee across two PCs), `apps.test.py` and `apps-deep.test.py` (every bundled app opens and does its main thing), `runtime-cmds.test.js` (the `kin` commands, sign-ins, always-on apps), `web-smoke.py` (the phone/web app as two phones), `installer.test.js`, and `relay-protocol.test.js <relay URL>`. They never contact Kindroid. The drag-and-drop tests need a "Get its code" download saved as `samples/kindroid-get-code-sample.gz`, which isn't included here.

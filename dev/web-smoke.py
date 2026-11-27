@@ -59,7 +59,7 @@ try:
             pg.on("pageerror", lambda e, t=tag: errors.append(f"{t} pageerror: {e}")); pg.set_default_timeout(25000)
             pg.route("https://api.kindroid.ai/**", kindroid_route)
         setup(A, "Tilok", "Ava", "aiAlpha1"); setup(B, "Bo", "Remy", "aiBravo1")
-        check("web: lobby lists the 4 built-in games", A.locator(".game").count() == 4, str(A.locator(".game").count()))
+        check("web: lobby lists the 16 built-in games and apps", A.locator(".game").count() == 16, str(A.locator(".game").count()))
         A.screenshot(path=SH + f"{TAG}-lobby.png")
         check("web: the key check reached the (mock) Kindroid API from the page", any(l["path"] == "/v1/send-message" and l["bearer"] for l in mocklines()))
 

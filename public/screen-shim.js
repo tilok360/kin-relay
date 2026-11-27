@@ -21,6 +21,8 @@
     [/\(asks your Kin: credits\)/g, "(asks your Kin through your API key)"],
     [/\((?:it )?uses credits\)/g, "(a Kin message through your API key)"],
     [/talking uses credits/g, "talking sends Kin messages through your API key"],
+    [/\b(uses|use) (?:Kindroid )?credits\b/g, "$1 your Kindroid API"],
+    [/\bcosts? (?:Kindroid )?credits\b/g, "is a normal Kin message through your API key"],
     [/Uses Kindroid credits/g, "Uses your Kindroid API"],
     [/Uses credits/g, "Uses your Kindroid API"],
     [/Kindroid credits/g, "Kindroid Apps credits"],

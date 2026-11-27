@@ -53,6 +53,13 @@ function loadApps() {
     const screen = (m.screens || [])[0];
     const inbound = (m.triggers || []).filter((t) => t && t.on === "inbound" && t.id).map((t) => String(t.id));
     const report = I.analyze(m, (p) => { const f = I.cleanPath(p) && path.join(dir, I.cleanPath(p)); return f && fs.existsSync(f) ? fs.readFileSync(f, "utf8") : ""; });
+    // A bundled app's own verdict (games/<slug>/kinrelay.json), from testing it in Kin Relay: what was checked, what can't work here
+    const kv = S.readJSON(path.join(dir, "kinrelay.json"), null);
+    if (kv && typeof kv === "object") {
+      if (["full", "mostly", "limited"].includes(kv.level)) report.level = kv.level;
+      if (Array.isArray(kv.tested)) report.tested = kv.tested.map(String).slice(0, 20);
+      if (Array.isArray(kv.limits)) report.warnings = (report.warnings || []).concat(kv.limits.map(String).slice(0, 20));
+    }
     const added = S.readJSON(path.join(dir, "kinrelay-added.json"), null);
     apps.set(slug, { slug, dir, builtin: d.builtin, manifest: m, screen: screen ? String(screen.entry).replace(/\\/g, "/") : "", inbound, report, added: added && added.added, art: fs.existsSync(path.join(PUBLIC, "art", slug + ".svg")) ? slug : "default" });
   }

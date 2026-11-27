@@ -1,0 +1,17 @@
+{
+ "level": "mostly",
+ "tested": [
+  "Its always-on part starts with Kin Relay, keeps running and restarts if it stops",
+  "Sign-ins (Twitch, Joystick) go in Settings > App sign-ins and are only sent to those sites"
+ ],
+ "limits": [
+  "Runs only while Kin Relay is open on this PC.",
+  "Not tested live on Twitch or Joystick.tv."
+ ],
+ "web": {
+  "level": "limited",
+  "limits": [
+   "On the phone/web version it can't stay connected in the background and can't use sign-ins: use the Windows, Mac or Android app."
+  ]
+ }
+}

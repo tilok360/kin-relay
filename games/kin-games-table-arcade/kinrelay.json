@@ -1,0 +1,10 @@
+{
+ "level": "full",
+ "tested": [
+  "Opens and plays solo",
+  "Your Kin makes its moves and lines through your API key"
+ ],
+ "limits": [
+  "No table chat in this app (Kins talk with each move, as in Kindroid)."
+ ]
+}

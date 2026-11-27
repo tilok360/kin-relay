@@ -41,7 +41,8 @@ GET IT (IPHONE / IPAD)
 PHONE AND WEB NOTES
    The games run inside the app, your key stays in the app's storage on the device, and only Kindroid's API
    and your relay are contacted. Tables work while the app is open. Drag and drop becomes a "Pick file"
-   button. Added games that wait for your Kin in one blocking step don't work there; the four built-in games do.
+   button. Added games that wait for your Kin in one blocking step don't work there; the apps that come with Kin
+   Relay do, except Co-Host and KinTouch (they need sign-ins: use the Windows, Mac or Android app).
 
 PICKING A KIN INSIDE A GAME
    Every game gets all your saved Kins. Where a game asks you to pick a Kin, every saved Kin is listed with a
@@ -51,12 +52,25 @@ PICKING A KIN INSIDE A GAME
    messages against your account, so check your account after a first session.
 
 TABLE CHAT
-   At a Hold'em or Casino table, anyone's chat line can get a reply from a Kin. Whoever you speak to (@Name, or
+   At a Hold'em, Casino or Kin-manatee table and in kin-roomsPlus rooms, anyone's chat line can get a reply from a Kin. Whoever you speak to (@Name, or
    "Name, ..." at the start) answers first, otherwise the Kin that has been quiet longest, and a reply can start one
    more reply: never more than 3 Kin lines in a row without a person speaking. Kin Relay waits out Kindroid's limit
    (10 requests per 30 seconds) while "X is typing..." shows. Each Kin speaks through its owner's key on the
    owner's PC. If a Kin can't answer (no key, wrong key, offline) the chat says so. OOC is people only. Your name at
    tables comes from Settings, or from the persona in your Kindroid export when you import it.
+
+APPS THAT COME WITH KIN RELAY (1.3.0)
+   Works fully: Kin Hold'em, Kin Casino, Cards Against Kin-manatee, Kin Games (Table & Arcade, Board & Cards),
+   Kin Battleship, Chess Clash, Kin Guesses Who, Kin Backup, Kin Workshop, Vignette Prompt Workshop and
+   Vignette Prompt Partner.
+   Mostly: kin-roomsPlus (no Kin voice notes or selfies: Kindroid's API has none; "Read aloud" uses this device's
+   voice), Sky Watch (its daily update runs while Kin Relay is open, and catches up when you open it), Kin Co-Host
+   (stays connected while Kin Relay is open; not tested live on Twitch/Joystick), KinTouch (needs your Lovense
+   developer token and a relay; not tested with a real toy).
+   App sign-ins: Settings > App sign-ins holds tokens an app asks for (Twitch, Joystick, Lovense). They stay on
+   this PC and are only sent to the one site the app named.
+   Memory: what an app tells your Kin to remember (kin tell) is kept on this PC and given to that Kin with its next
+   questions from that app. It isn't added to the Kin's own memory in Kindroid.
 
 IMPORT AND EXPORT KINS
    Characters > Import reads Kindroid's data export (.jsonl), a Kin Relay file or a Kin Studio character file.
@@ -104,7 +118,7 @@ IMPORT AND EXPORT KINS
        folder, no links, size limits, and nothing in it is run while it's added (no install scripts, ever);
      - tells you plainly what works here, what Kin Relay stands in for (saves, your Kin, tables), and what can't
        work outside Kindroid (your Kin's voice, selfies, messages into your Kindroid chat, scheduled runs);
-     - lists it with the other games. "Remove" deletes it; your saves for it stay. (The four games that come with
+     - lists it with the other games. "Remove" deletes it; your saves for it stay. (The games that come with
        Kin Relay can't be removed; a newer download of one of them takes its place.)
    Dropping a newer download of the same app replaces it (you're asked first). Only add apps from people you trust,
    as with any program. Each game's code runs with Node's permission limits: it can read and write only its own

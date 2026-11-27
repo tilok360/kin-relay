@@ -75,7 +75,7 @@
     d.showModal(); (row.lastChild || d).focus();
   }
   function list(head, items) { const out = []; if (!items || !items.length) return out; out.push(el("h5", null, head)); const ul = el("ul"); for (const t of items) ul.append(el("li", null, t)); out.push(ul); return out; }
-  function reportNodes(r) { return [...list("Works here", r.works), ...list("Kin Relay stands in for Kindroid", r.shim), ...list("Won't work outside Kindroid", r.warnings)]; }
+  function reportNodes(r) { return [...list("Works here", r.works), ...list("Tested in Kin Relay", r.tested || []), ...list("Kin Relay stands in for Kindroid", r.shim), ...list("Won't work outside Kindroid", r.warnings)]; }
   function showReport(name, r) { dialog(name, reportNodes(r || { works: [], shim: [], warnings: [] }), [["Close", null, "primary"]]); }
 
   // ---------- adding a game ----------

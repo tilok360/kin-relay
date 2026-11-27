@@ -1,0 +1,7 @@
+{
+ "level": "full",
+ "tested": [
+  "Solo with your Kins and hosted between two PCs through the relay",
+  "Table chat: anyone's line gets Kin replies, 'X is typing\u2026', at most 3 Kin lines in a row, clear errors"
+ ]
+}

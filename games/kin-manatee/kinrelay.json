@@ -1,0 +1,8 @@
+{
+ "level": "full",
+ "tested": [
+  "Solo free, My Kins table and hosted between two PCs",
+  "Table chat: anyone's line gets Kin replies, typing indicator, at most 3 Kin lines in a row, clear errors",
+  "Your name from Settings instead of 'Host'; a guest's Kin answers through its own key"
+ ]
+}

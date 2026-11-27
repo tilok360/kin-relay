@@ -52,6 +52,13 @@ for (const g of GAMES) {
   copy(path.join(ROOT, "games", g), path.join(OUT, "games", g));
   const dir = path.join(OUT, "games", g), manifest = JSON.parse(fs.readFileSync(path.join(dir, "kin.json"), "utf8")), files = walk(dir);
   const report = I.analyze(manifest, (p) => { const c = I.cleanPath(p); return c && fs.existsSync(path.join(dir, c)) ? fs.readFileSync(path.join(dir, c), "utf8") : ""; });
+  let kv = null; try { kv = JSON.parse(fs.readFileSync(path.join(dir, "kinrelay.json"), "utf8")); } catch {}
+  if (kv) { // the app's verdict from testing in Kin Relay, with what differs on the phone/web version
+    const w = kv.web || {};
+    report.level = w.level || kv.level || report.level;
+    report.tested = (kv.tested || []).slice(0, 20);
+    report.warnings = (report.warnings || []).concat(kv.limits || [], w.limits || []);
+  }
   index.push({ slug: g, manifest, files, report, art: fs.existsSync(path.join(ROOT, "public", "art", g + ".svg")) ? g : "default" });
 }
 fs.writeFileSync(path.join(OUT, "games", "index.json"), JSON.stringify({ version: VERSION, games: index }));

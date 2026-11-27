@@ -52,6 +52,12 @@ function wrapFetch() {
         const m = await new Promise((res) => askWaiting.set(id, res));
         return new Response(JSON.stringify(m), { status: 200, headers: { "content-type": "application/json" } });
       }
+      if (url.startsWith("http://127.0.0.1:0/internal/chat")) { // `kin chat`: the page reads the chat through Kindroid's API
+        const b = JSON.parse(init.body), id = ++askSeq;
+        self.postMessage({ t: "chat", id, kin: b.kin, days: b.days, slug: b.slug });
+        const m = await new Promise((res) => askWaiting.set(id, res));
+        return new Response(JSON.stringify(m), { status: 200, headers: { "content-type": "application/json" } });
+      }
       return await real(input, init);
     } finally { inflight--; touch(); }
   };
