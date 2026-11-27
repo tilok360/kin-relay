@@ -1,0 +1,15 @@
+{
+  "kin": 1,
+  "name": "Vignette Prompt Partner",
+  "purpose": "Drafts Vignette prompts with the Kin opened from chat, or the first Kin attached to the app. Kindroid may use its memories; replies stay in the app, not chat or memory.",
+  "grants": [
+    "kin:read"
+  ],
+  "screens": [
+    {
+      "slot": "panel",
+      "entry": "screen/index.html",
+      "title": "Vignette Prompt Partner"
+    }
+  ]
+}

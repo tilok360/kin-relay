@@ -1,0 +1,587 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Kin Workshop</title>
+<style>
+:root{color-scheme:dark;--bg:#101216;--panel:#1a1e24;--panel2:#202630;--line:#343c48;--ink:#f2f3f5;--muted:#aeb6c1;--accent:#b990ff;--ok:#8fdbb2;--warn:#ffd48a;--bad:#ff9d9d}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(ellipse at 15% 0%,color-mix(in srgb,var(--accent) 12%,transparent),transparent 38%),var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{width:min(100%,980px);margin:auto;padding:20px 16px 44px}
+.top{display:flex;gap:14px;align-items:center;margin-bottom:12px}
+.sigil{height:46px;width:46px;flex:none;border:1px solid color-mix(in srgb,var(--accent) 55%,var(--line));border-radius:14px;display:grid;place-items:center;color:var(--accent);font:700 21px Georgia;background:var(--panel)}
+.kicker{margin:0;color:var(--accent);font-size:11px;letter-spacing:.16em;font-weight:750}
+.top h1{margin:2px 0 0;font:clamp(24px,6vw,34px)/1.08 Georgia,serif}
+.kinbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:12px;font-size:13px;color:var(--muted)}
+.kinbar strong{color:var(--ink)}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.tab{background:#1b2027;color:var(--ink);border:1px solid var(--line);border-radius:999px;padding:8px 14px;font:650 13px system-ui;cursor:pointer}
+.tab[aria-selected="true"]{background:var(--accent);color:#17141e;border-color:var(--accent)}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;align-items:start}
+.card{background:linear-gradient(145deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:16px;padding:16px;min-width:0}
+.card h2{margin:0 0 6px;font-size:17px}
+.hint{color:var(--muted);font-size:13px;margin:0 0 12px}
+.fields{display:grid;gap:11px}
+.field label{display:block;font-size:13px;font-weight:680;margin:0 0 5px}
+.field input,.field textarea,.field select{display:block;width:100%;border:1px solid #454f5d;border-radius:9px;background:#11151a;color:var(--ink);font:inherit;padding:9px 11px;outline:none}
+.field textarea{min-height:66px;resize:vertical}
+.field input:focus,.field textarea:focus,.field select:focus,.sec textarea:focus{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 28%,transparent)}
+.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px}
+button{border:0;border-radius:9px;padding:9px 14px;background:var(--accent);color:#17141e;font:700 14px system-ui;cursor:pointer}
+button.secondary{background:#303943;color:var(--ink);border:1px solid #4c5663}
+button.small{padding:5px 10px;font-size:12px}
+button.danger{background:transparent;color:var(--bad);border:1px solid #6b3a3a}
+button:disabled{opacity:.5;cursor:default}
+button:focus-visible,.tab:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+.meter{font-size:12px;color:var(--muted)}
+.meter.over{color:var(--bad);font-weight:700}
+.status{min-height:22px;color:var(--muted);font-size:13px;margin:8px 0 0}
+.status.bad{color:var(--bad)}
+.notice{border-left:3px solid var(--accent);padding:9px 11px;background:#11151a;border-radius:0 8px 8px 0;color:#d7dbe1;font-size:12px;margin:12px 0 0}
+.secs{display:grid;gap:12px;margin-top:10px}
+.sec{background:#11151a;border:1px solid var(--line);border-radius:11px;padding:11px}
+.sec.over{border-color:#7a3f46}
+.sechead{display:flex;gap:8px;align-items:baseline;justify-content:space-between;flex-wrap:wrap}
+.sechead h3{margin:0;font-size:13px;letter-spacing:.04em}
+.sec textarea{display:block;width:100%;min-height:90px;resize:vertical;white-space:pre-wrap;overflow-wrap:anywhere;background:#0c1014;border:1px solid #343c48;border-radius:8px;color:var(--ink);font:13px/1.55 ui-monospace,Consolas,monospace;padding:9px;margin-top:7px;outline:none}
+.sec .row{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}
+.sec details{margin-top:7px;font-size:12px;color:var(--muted)}
+.sec details pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#0c1014;border:1px solid #2a313b;border-radius:8px;padding:8px;font:12px/1.5 ui-monospace,Consolas,monospace;color:#cfd4da}
+.badge{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:1px 8px;font-size:11px;color:var(--muted);margin-left:6px}
+.badge.ex{border-color:var(--warn);color:var(--warn)}
+.drafts{display:grid;gap:8px}
+.draft{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:#11151a;border:1px solid var(--line);border-radius:11px;padding:10px 12px}
+.draft .t{font-weight:700}
+.draft .m{font-size:12px;color:var(--muted)}
+.empty{color:var(--muted);font-size:14px;padding:16px 4px}
+[hidden]{display:none!important}
+@media(max-width:700px){main{padding:14px 11px 34px}.layout{grid-template-columns:1fr}.card{padding:13px}}
+</style>
+</head>
+<body>
+<main>
+<header class="top"><div class="sigil" aria-hidden="true">K</div><div><p class="kicker">DESIGN WITH YOUR KIN</p><h1>Kin Workshop</h1></div></header>
+
+<div class="kinbar" id="kinbar" role="status" aria-live="polite">Looking for your attached Kin…</div>
+
+<div class="tabs" role="tablist" aria-label="Workshop tools">
+  <button type="button" class="tab" role="tab" id="tab-card" data-tool="card" aria-selected="true">Character card</button>
+  <button type="button" class="tab" role="tab" id="tab-game" data-tool="game" aria-selected="false">Game system</button>
+  <button type="button" class="tab" role="tab" id="tab-room" data-tool="room" aria-selected="false">Room &amp; group</button>
+  <button type="button" class="tab" role="tab" id="tab-saved" data-tool="saved" aria-selected="false">Saved drafts</button>
+</div>
+
+<div class="layout" id="view-tool">
+  <section class="card" aria-labelledby="setup-title">
+    <h2 id="setup-title">Your details</h2>
+    <p class="hint" id="setup-hint"></p>
+    <div class="fields" id="fields"></div>
+    <div class="actions">
+      <button type="button" id="draft">Draft with my Kin</button>
+      <button type="button" class="secondary" id="reset">Restore example</button>
+      <button type="button" class="secondary" id="clear">Clear</button>
+    </div>
+    <p class="meter" id="qmeter"></p>
+    <p class="notice">Your details go to the attached Kin as one question. The Kin answers knowing who it is and who you are (your name and the backstory you gave it), but not your chat or its memories. Nothing is pasted into Kindroid for you. Asking may use Kindroid AI credits. Your details and drafts are kept in this app's own files so you can come back to them.</p>
+  </section>
+
+  <section class="card" aria-labelledby="result-title">
+    <h2 id="result-title">Draft to review <span class="badge ex" id="exbadge">Example</span></h2>
+    <div class="actions" style="margin-top:4px">
+      <button type="button" class="secondary small" id="copyall">Copy full draft</button>
+      <button type="button" class="secondary small" id="retry" hidden>Ask again</button>
+      <button type="button" class="secondary small" id="cancel" hidden>Stop waiting</button>
+      <span class="meter" id="total"></span>
+    </div>
+    <p class="status" id="status" role="status" aria-live="polite"></p>
+    <div class="secs" id="secs"></div>
+  </section>
+</div>
+
+<section class="card" id="view-saved" hidden aria-labelledby="saved-title">
+  <h2 id="saved-title">Saved drafts</h2>
+  <p class="hint">Every answer from your Kin is saved here, with the details you entered. Open one to keep working on it. The newest 40 are kept.</p>
+  <div class="drafts" id="drafts"></div>
+</section>
+</main>
+
+<script>
+(function () {
+  "use strict";
+  const $ = (id) => document.getElementById(id);
+  const len = (s) => Array.from(s || "").length;
+  const fmt = (n) => n.toLocaleString("en-US");
+  const ASK_LIMIT = 8000;          // the platform's limit for one ask
+  const KEEP_DRAFTS = 40;
+  const qs = new URLSearchParams(location.search);
+  const ASK_WAIT = Math.max(5, Number(qs.get("asktimeout")) || 120) * 1000; // a test host may shorten it
+  const HEADINGS = "Begin each section with its heading alone on one line, written as ### HEADING (for example ### GREETING). Put nothing else on a heading line, and give no character counts in the headings.";
+
+  // ---------- Tools ----------
+  const TOOLS = {
+    card: {
+      title: "Character card",
+      hint: "Describe the character. Your Kin drafts the Kindroid fields; each one is counted against its limit.",
+      fields: [
+        { id: "kind", label: "What are you building?", type: "select", options: ["Companion", "Roleplay character", "Game master / engine"], value: "Companion" },
+        { id: "name", label: "Character name", type: "text", value: "Mara Vell" },
+        { id: "age", label: "Adult age or age range", type: "text", value: "34-year-old adult" },
+        { id: "role", label: "Role and core idea", type: "textarea", value: "Owner of a small harbour bookshop; observant, dry-humored, quietly kind." },
+        { id: "voice", label: "How should they sound?", type: "text", value: "Short, wry sentences; warmth shown through practical gestures." },
+        { id: "dynamic", label: "Starting relationship or user role", type: "text", value: "The user is a newer regular; trust grows through honest conversation." },
+        { id: "look", label: "Appearance notes (optional)", type: "textarea", value: "Adult woman, lean build, warm olive skin, faint freckles, gray-green eyes, shoulder-length dark brown hair." },
+        { id: "boundary", label: "Pacing, boundaries, or must-keep facts", type: "textarea", value: "Keep the user in control of their own words and actions. Let friendship develop naturally." }
+      ],
+      title_of: (v) => v.name || "Character card",
+      prompt: (v, brief) => "You are helping draft a new Kindroid character card. Use only the information supplied below; do not invent relationship history or facts. Make concise, grammatical, third-person prose, keep each field doing one job, avoid contradictions and repeated facts. Make all human characters adults. Write paste-ready sections in this order: PERSONALITY / BACKSTORY (under 2,500 characters); KEY MEMORIES (under 1,000; only known durable facts, otherwise a clearly marked starter); ADDITIONAL CONTEXT (only if useful, under 2,500); RESPONSE DIRECTIVE (under 250); EXAMPLE MESSAGE (under 750); GREETING (under 750); AVATAR DESCRIPTION (under 800, only if appearance notes were supplied). " + HEADINGS + " A Kin setup is a draft for the user to review, never something to paste or change automatically.\n\nDetails supplied by the user:\n" + brief,
+      sample: "### PERSONALITY / BACKSTORY\nMara Vell, 34, runs a small harbour bookshop where the floorboards creak and the tea is always too strong. She notices everything, says half of it, and shows warmth through small practical kindnesses: a book set aside, a chair pulled closer to the stove.\n\n### KEY MEMORIES\nStarter, to fill in through play: the user is a newer regular at the shop.\n\n### RESPONSE DIRECTIVE\nShort, wry sentences. Warmth through actions. Never speak or act for the user.\n\n### GREETING\n*The bell over the door rattles.* \"You again. Good. I saved you something.\"\n\n### AVATAR DESCRIPTION\nAdult woman in her thirties, lean build, warm olive skin with faint freckles, gray-green eyes, shoulder-length dark brown hair."
+    },
+    game: {
+      title: "Game system",
+      hint: "Design an actual game: play loop, rules, state and scenarios. This is system design, not card writing.",
+      fields: [
+        { id: "task", label: "What do you want to build now?", type: "select", options: ["Design the core system", "Build the first scenario", "Stress-test the rules", "Create the compact Kindroid install pack"], value: "Design the core system" },
+        { id: "genre", label: "Genre and world premise", type: "textarea", value: "Coastal mystery: a ferry vanished in clear weather, and its empty logbook has just washed ashore." },
+        { id: "player", label: "Player role and meaningful choices", type: "textarea", value: "The player is a visiting researcher. They choose which leads to pursue, whom to trust, and what risks to take." },
+        { id: "loop", label: "What players do repeatedly", type: "textarea", value: "Notice a discrepancy, choose a lead, investigate or test it, update the evidence board, then decide whether to advance the harbor pressure." },
+        { id: "resolution", label: "How uncertainty is resolved", type: "select", options: ["Player supplies a real die roll", "Narrative adjudication, no dice", "Collaborative fiction, no win/loss rolls"], value: "Player supplies a real die roll" },
+        { id: "mechanics", label: "Stats, resources, clocks, or constraints", type: "textarea", value: "Three approaches: Observe, Persuade, Improvise. Track fatigue, favors owed, and a 6-step storm clock." },
+        { id: "stakes", label: "Failure, costs, and recovery", type: "textarea", value: "A failed lead costs time or trust and opens a new complication; it never erases the only clue needed to continue." },
+        { id: "arc", label: "Progression and campaign shape", type: "textarea", value: "Three-session arc. Each solved lead reveals a new connection; the final session resolves what happened to the ferry." },
+        { id: "state", label: "Exact state you want carried forward", type: "textarea", value: "Current location; time; evidence with source/confidence; NPC goals and trust; resources; open leads; clocks; unresolved consequences." },
+        { id: "tone", label: "Tone, boundaries, and design priorities", type: "textarea", value: "Tense, humane, and clue-fair. The narrator never decides the player’s actions, words, or feelings." }
+      ],
+      title_of: (v) => (v.task || "Game system") + (v.genre ? ": " + v.genre.slice(0, 50) : ""),
+      prompt: (v, brief) => {
+        const tasks = {
+          "Design the core system": "Architect a robust roleplay game system, not a character card. Return: design pillars and player promise; repeatable core loop; roles and control boundaries; resolution procedure with outcomes and costs; stats/resources/clocks with exact update rules; progression and campaign pacing; failure, recovery, edge cases, anti-loop safeguards; precise state sheet; turn-by-turn engine procedure and response format; and a worked sample turn with a state change. Identify open design decisions. Make mechanics playable and auditable, with procedures, thresholds, costs, and edge cases rather than vague mood advice.",
+          "Build the first scenario": "Build a complete first playable scenario for this system. Return its premise/objective, starting situation, 3-5 locations with actionable discoveries, 3-5 NPCs with independent goals, essential clues with at least two routes to each conclusion, a pressure clock with explicit triggers, meaningful branches, failure-forward outcomes, progression/rewards, an opening scene ending on a player choice, and a compact starting state sheet. Fit every piece to the submitted rules.",
+          "Stress-test the rules": "Audit the proposed system for ambiguity, exploits, contradictions, dead ends, repetition, unearned failure, and state drift. Create five concrete playtest cases: an unanticipated player action, a failed roll/setback, an exhausted resource, a missing clue, and conflicting remembered state. For each show expected resolution, state update, and exact rule text that prevents confusion. End with prioritized revisions. Preserve player agency.",
+          "Create the compact Kindroid install pack": "Compress this game design into a practical install pack, not a character biography. Return ENGINE RULES for the Backstory field (under 2,500 characters); RESPONSE DIRECTIVE (under 250); EXAMPLE MESSAGE (under 750); GREETING (under 750); KEY MEMORIES state-sheet starter with unknowns marked unset (under 1,000); and player-facing QUICK RULES. Preserve the core loop, resolution, state updates, consequence rules, and player agency. Flag content better kept in Journals or external notes. Do not claim Kindroid stores state outside its actual memory fields."
+        };
+        return "You are an interactive roleplay systems designer. Use only the details entered below. Treat this as game-system design, not character-card writing. Do not invent external tools, automatic dice, persistent memory, or internet access. If a rule is underspecified, mark it as a decision for the designer. Preserve player agency: the engine never chooses the player’s actions, dialogue, thoughts, or feelings. Keep game state consistent; show changes explicitly and do not erase clues or rewrite rules to force outcomes. " + HEADINGS + "\n\nDesign brief:\n" + brief + "\n\nTask: " + v.task + "\n\n" + (tasks[v.task] || tasks["Design the core system"]);
+      },
+      sample: "### CORE LOOP\nSpot a discrepancy → choose a lead → investigate → update evidence and pressure → decide what to risk next.\n\n### RESOLUTION\nThe player supplies a real d6 result. 1–2: setback plus a clock step. 3–4: gain the clue at a cost. 5–6: gain the clue and a useful advantage.\n\n### STATE SHEET\nHarbor storm 1/6 · Evidence 2 · Trust 1 · Open leads: lighthouse, ferry office."
+    },
+    room: {
+      title: "Room & group",
+      hint: "Design a shared story for a Room or Group Chat: cast, relationships, turn-taking and public-safe setup text.",
+      fields: [
+        { id: "task", label: "What do you want to design?", type: "select", options: ["Architect the group dynamics", "Create Room or Group setup text", "Build a multi-session group arc", "Audit interaction and privacy"], value: "Architect the group dynamics" },
+        { id: "environment", label: "Where will the story run?", type: "select", options: ["Room", "Group Chat"], value: "Room" },
+        { id: "premise", label: "Shared premise, setting, and situation", type: "textarea", value: "A storm knocks out the lights in a harbour bookshop. A sealed parcel is found behind the counter." },
+        { id: "cast", label: "Cast and public roles", type: "textarea", value: "Mara owns the shop. Theo is an old friend of her late father. The user is a newer regular. Include only details appropriate for this shared space." },
+        { id: "relationships", label: "Relationship map and unresolved tensions", type: "textarea", value: "Mara trusts Theo’s competence but resents his habit of disappearing. Theo wants to help without being treated as a replacement for her father." },
+        { id: "social", label: "How should the group feel and interact?", type: "textarea", value: "Kins speak to one another as well as the person. Each has a reason to join scenes, and no single voice dominates." },
+        { id: "flow", label: "Turn-taking and scene rhythm", type: "textarea", value: "Manual turns for mysteries; one speaker responds at a time. Each scene ends with a clear shared choice or new lead." },
+        { id: "expectations", label: "Shared expectations and boundaries", type: "textarea", value: "Keep conflict playable and respectful. Participants control their own actions and dialogue. Show these expectations before anyone joins." },
+        { id: "public", label: "What can safely appear in public bios?", type: "textarea", value: "Role, personality, and relevant relationships only. Keep private history, real contact details, and sensitive facts out." },
+        { id: "memory", label: "Continuity and memory preferences", type: "textarea", value: "Track current scene, shared clues, unresolved questions, and relationship changes. Each Kin’s owner reviews that Kin’s Room memory settings." }
+      ],
+      title_of: (v) => (v.task || "Room & group") + (v.premise ? ": " + v.premise.slice(0, 50) : ""),
+      prompt: (v, brief) => {
+        const tasks = {
+          "Architect the group dynamics": "Architect the social design. Return: shared premise and dramatic engine; cast map with each participant’s role, motivation, and reason to engage; relationship map for each important pair (trust, friction, history, leverage); conversation contract (who initiates, how Kins address one another, how to prevent pile-ons or silence); scene rhythm and handoff pattern; conflict boundaries; continuity ledger; and three stress cases (one Kin dominates, two Kins disagree, one human is quiet) with fair handling. Recommend Manual or Automatic Room mode and Talks less/Balanced/Talks more only as setup suggestions, with reasons.",
+          "Create Room or Group setup text": "Create the platform setup package for the selected environment. For Room, output ROOM DESCRIPTION, ROOM RULES phrased as shared expectations, SHORT ROOM CONTEXT, HOST BIO, a public-safe KIN BIO template, PARTICIPANT ONBOARDING note that presents the rules before joining, and a CONTINUITY STARTER. For Group Chat, output GROUP CONTEXT, GROUP DIRECTIVE, SCENE / OPENING, concise RELATIONSHIP LINES, and a CONTINUITY STARTER. Explain which details are shared and which memory settings each Kin owner should review. Keep fields concise and do not claim uncertain caps.",
+          "Build a multi-session group arc": "Design a three-session ensemble arc, not a single scene. For each session give its dramatic question, who has a reason to drive it, a scene sequence, a relationship shift earned through play, a group choice, consequences carried forward, and a recap/state update. Provide multiple participation routes so a quieter participant can still matter. Include an opening scene and two optional complications. Do not force relationship outcomes or decide any player’s actions.",
+          "Audit interaction and privacy": "Audit the proposed shared-space design. Return: public information inventory; potentially sensitive details to remove or generalize; expectations that could be mistaken for instructions overriding a Kin; gaps in relationship or turn-taking design; continuity and memory risks; and exact safer wording for risky fields. Explain that private source fields are not visible for other participants to browse, but their details may still appear in shared replies. Each Kin’s owner controls memory settings. Do not claim access to those settings."
+        };
+        return "You are a collaborative-story and group-dynamics designer. Use only the submitted details. This is a group-dynamics and shared-story design task, not a character-card generator. Do not invent private facts about participants or Kins. Room names, descriptions, rules, context, and bios are supplied to Kins as shared context; Room context may be mentioned in replies. Frame host expectations as mutually visible setting and boundaries, never as commands that override a Kin’s own identity or instructions. Tell hosts to show Room rules to everyone before joining. Keep bios public-safe: role, personality, and relevant relationships. Explain privacy and memory settings participants should review; do not imply the app can inspect or change them. Preserve each participant’s agency and each Kin’s distinct identity. " + HEADINGS + "\n\nDesign brief:\n" + brief + "\n\nTask: " + v.task + "\n\n" + (tasks[v.task] || tasks["Architect the group dynamics"]);
+      },
+      sample: "### RELATIONSHIPS\nMara trusts Theo’s competence but resents his silence; Theo wants to help without taking over. The newcomer has a reason to know the parcel’s mark.\n\n### CONVERSATION FLOW\nOne Kin answers at a time. Kins can address one another; every scene ends with a shared lead or choice.\n\n### CONTINUITY STARTER\nCurrent scene · shared clues · open leads · trust shifts · next handoff."
+    }
+  };
+
+  // Kindroid field limits, matched from a section's heading.
+  const CAPS = [
+    [/AVATAR\s+GENERATOR/, 250], [/AVATAR\s+DESCRIPTION/, 800], [/KEY\s+MEMOR/, 1000],
+    [/RESPONSE\s+DIRECTIVE/, 250], [/EXAMPLE\s+MESSAGE/, 750], [/GREETING|OPENING\s+MESSAGE/, 750],
+    [/ADDITIONAL\s+CONTEXT/, 2500], [/ONGOING\s+THREAD|CURRENT\s+SCENE/, 800], [/VOICE\s+(DESCRIPTION|PROFILE)/, 1000],
+    [/PERSONALITY|BACKSTORY|ENGINE\s+RULES/, 2500], [/^TAGLINE/, 100]
+  ];
+  const capOf = (name) => { const n = name.toUpperCase(); for (const [re, cap] of CAPS) if (re.test(n)) return cap; return 0; };
+
+  // ---------- Bridge to Kindroid ----------
+  const inFrame = window.parent && window.parent !== window;
+  const memory = new Map();
+  let seq = 0;
+  const pending = new Map();
+  window.addEventListener("message", (ev) => {
+    const m = ev.data;
+    if (!m || typeof m !== "object" || typeof m.kin !== "string") return;
+    if (m.kin === "kins") { showKins(m); }
+    if (m.kin === "ask") { onAsk(m); return; }
+    let key = m.id != null && pending.has(m.id) ? m.id : null;
+    if (key == null) for (const [k, p] of pending) if (p.kind === m.kin && (p.path == null || p.path === m.path)) { key = k; break; }
+    if (key == null) return;
+    const p = pending.get(key); pending.delete(key); clearTimeout(p.timer); p.resolve(m);
+  });
+  function request(msg, ms) {
+    return new Promise((resolve, reject) => {
+      const id = "w" + (++seq);
+      const timer = setTimeout(() => { pending.delete(id); reject(new Error("Kindroid did not answer in time.")); }, ms || 20000);
+      pending.set(id, { kind: msg.kin, path: msg.path, resolve, timer });
+      parent.postMessage(Object.assign({ id }, msg), "*");
+    });
+  }
+  const files = {
+    async read(path) {
+      if (!inFrame) return memory.has(path) ? memory.get(path) : null;
+      const m = await request({ kin: "files.read", path });
+      if (m.body == null) return null;
+      if (typeof m.body === "string") return m.body;
+      if (m.body instanceof Blob) return await m.body.text();
+      return JSON.stringify(m.body);
+    },
+    async write(path, body) {
+      if (!inFrame) { memory.set(path, body); return true; }
+      const m = await request({ kin: "files.write", path, body }, 60000);
+      if (!m.ok) throw new Error("Saving " + path + " failed.");
+      return true;
+    }
+  };
+  let chain = Promise.resolve();
+  const queueWrite = (path, body) => { const p = chain.then(() => files.write(path, body)); chain = p.catch(() => {}); return p; };
+  const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
+
+  // ---------- Which Kin answers ----------
+  // A screen's ask goes to the Kin whose chat the app was opened from (or the first attached Kin);
+  // a screen cannot pick another one, so the bar says who it is and how to change it.
+  function showKins(m) {
+    const bar = $("kinbar"); bar.textContent = "";
+    if (!m || !m.ok || !Array.isArray(m.kins) || !m.kins.length) {
+      bar.append("No Kin is attached to this app yet. Attach one in Kindroid Apps, then open the app from that Kin's chat.");
+      $("draft").disabled = true; return;
+    }
+    $("draft").disabled = !!asking;
+    const cur = typeof m.current === "string" ? m.kins.find((k) => k.id === m.current) : null;
+    const k = cur || m.kins[0];
+    const b = document.createElement("strong"); b.textContent = k.name || k.id;
+    bar.append("Drafting with ", b, cur ? " (opened from this chat)." : " (the first attached Kin).");
+    if (m.kins.length > 1) bar.append(" To use another of your " + m.kins.length + " attached Kins, open the app from that Kin's chat.");
+    if (m.current && typeof m.current === "object" && m.current.group) bar.append(" Opened from the group “" + (m.current.group.name || "") + "”.");
+  }
+
+  // ---------- State ----------
+  let tool = "card";
+  let forms = {};             // tool -> {fieldId: value}
+  let drafts = [];            // newest first
+  let current = null;         // the draft on screen: {id, tool, task, title, created, inputs, sections, example}
+  let asking = null;          // {id, kind, question, timer, ...}
+  let lastFailed = null;      // the last ask that got no answer, for "Ask again"
+
+  const saveForms = debounce(() => queueWrite("forms.json", JSON.stringify({ app: "kin-workshop", version: 1, forms })).catch(() => {}), 1200);
+  const saveDrafts = () => queueWrite("drafts.json", JSON.stringify({ app: "kin-workshop", version: 1, drafts: drafts.slice(0, KEEP_DRAFTS) })).catch((e) => setStatus("Could not save the draft: " + e.message, true));
+  const saveDraftsSoon = debounce(saveDrafts, 1500);
+
+  function values(t) {
+    const v = {};
+    for (const f of TOOLS[t].fields) v[f.id] = (forms[t] && forms[t][f.id] != null) ? forms[t][f.id] : f.value;
+    return v;
+  }
+  function brief(t, v) {
+    return TOOLS[t].fields.map((f) => [f.label, String(v[f.id] || "").trim()]).filter((x) => x[1]).map((x) => x[0] + ": " + x[1]).join("\n");
+  }
+  function question(t) { const v = values(t); return TOOLS[t].prompt(v, brief(t, v)); }
+
+  // ---------- Splitting an answer into sections ----------
+  const COUNT_NOTE = /\s*[(\[][^)\]]*\b(characters?|chars?)\b[^)\]]*[)\]]\s*$/i;
+  function headingOf(line) {
+    const raw = line.trim();
+    if (!raw || raw.length > 90) return null;
+    let m = raw.match(/^#{1,6}\s*(.+?)\s*#*\s*$/);
+    let h = m ? m[1] : null;
+    if (!h) {
+      m = raw.match(/^\*\*(.+?)\*\*:?\s*$/) || raw.match(/^([A-Z][A-Z0-9 &\/'’()+,.\-–]{2,70}):?$/);
+      if (!m) return null;
+      h = m[1];
+      const letters = h.replace(/[^A-Za-z]/g, "");
+      if (!letters || letters.replace(/[^A-Z]/g, "").length / letters.length < 0.8) return null;
+    }
+    h = h.replace(/\*\*/g, "").replace(/:\s*$/, "").replace(COUNT_NOTE, "").trim();
+    return h || null;
+  }
+  function split(text) {
+    const lines = String(text || "").replace(/\r\n?/g, "\n").split("\n");
+    const out = []; let cur = null; const lead = [];
+    for (const line of lines) {
+      const h = headingOf(line);
+      if (h) { cur = { name: h, text: "" }; out.push(cur); continue; }
+      if (cur) cur.text += (cur.text ? "\n" : "") + line; else lead.push(line);
+    }
+    for (const s of out) {
+      s.text = s.text.replace(/^\s*[(\[][^)\]]*\b(characters?|chars?)\b[^)\]]*[)\]]\s*\n?/i, "").trim();
+      s.en = "";
+    }
+    const intro = lead.join("\n").trim();
+    if (!out.length) return [{ name: "Draft", text: intro, en: "" }];
+    if (intro) out.unshift({ name: "Notes from your Kin", text: intro, en: "" });
+    return out.filter((s) => s.text || s.name);
+  }
+  const joinSections = (secs) => secs.map((s) => "### " + s.name + "\n" + s.text).join("\n\n");
+
+  // ---------- Form ----------
+  function renderForm() {
+    const T = TOOLS[tool], v = values(tool), box = $("fields");
+    $("setup-hint").textContent = T.hint;
+    box.textContent = "";
+    for (const f of T.fields) {
+      const wrap = document.createElement("div"); wrap.className = "field";
+      const lab = document.createElement("label"); lab.htmlFor = "f-" + f.id; lab.textContent = f.label;
+      let inp;
+      if (f.type === "select") {
+        inp = document.createElement("select");
+        for (const o of f.options) { const op = document.createElement("option"); op.value = o; op.textContent = o; inp.appendChild(op); }
+      } else if (f.type === "textarea") inp = document.createElement("textarea");
+      else { inp = document.createElement("input"); inp.type = "text"; }
+      inp.id = "f-" + f.id; inp.value = v[f.id] || "";
+      inp.addEventListener("input", () => { (forms[tool] = forms[tool] || {})[f.id] = inp.value; saveForms(); meter(); });
+      inp.addEventListener("change", () => { (forms[tool] = forms[tool] || {})[f.id] = inp.value; saveForms(); meter(); });
+      inp.addEventListener("keydown", (ev) => { if (ev.key === "Enter" && (inp.tagName !== "TEXTAREA" || ev.ctrlKey || ev.metaKey)) { ev.preventDefault(); draft(); } });
+      wrap.append(lab, inp); box.appendChild(wrap);
+    }
+    meter();
+  }
+  function meter() {
+    const n = len(question(tool)), m = $("qmeter");
+    m.textContent = "Request to your Kin: " + fmt(n) + " / " + fmt(ASK_LIMIT) + " characters" + (n > ASK_LIMIT ? ". Too long for one ask: shorten your details." : "");
+    m.className = "meter" + (n > ASK_LIMIT ? " over" : "");
+    if (!asking) $("draft").disabled = n > ASK_LIMIT || $("kinbar").textContent.startsWith("No Kin");
+    return n;
+  }
+
+  // ---------- Result ----------
+  function setStatus(t, bad) { const s = $("status"); s.textContent = t; s.className = "status" + (bad ? " bad" : ""); }
+  function showExample() {
+    current = { id: null, tool, example: true, sections: split(TOOLS[tool].sample) };
+    renderResult();
+    setStatus("This is an example. Edit your details, then choose Draft with my Kin.");
+  }
+  function renderResult() {
+    const box = $("secs"); box.textContent = "";
+    $("exbadge").hidden = !(current && current.example);
+    if (!current) { $("total").textContent = ""; return; }
+    let total = 0;
+    current.sections.forEach((s, i) => {
+      const cap = capOf(s.name);
+      const sec = document.createElement("div"); sec.className = "sec";
+      const head = document.createElement("div"); head.className = "sechead";
+      const h = document.createElement("h3"); h.textContent = s.name;
+      const cnt = document.createElement("span"); cnt.className = "meter";
+      head.append(h, cnt);
+      const ta = document.createElement("textarea"); ta.value = s.text; ta.setAttribute("aria-label", s.name); ta.spellcheck = true;
+      ta.rows = Math.min(14, Math.max(3, Math.ceil(len(s.text) / 60) + s.text.split("\n").length));
+      const row = document.createElement("div"); row.className = "row";
+      const copy = btn("Copy", "secondary small", () => copyText(ta.value, s.name));
+      const zh = btn("Fit in Chinese", "small", () => condense(i, "zh"));
+      const en = btn("Shorten in English", "secondary small", () => condense(i, "en"));
+      row.append(copy);
+      if (cap) row.append(zh, en);
+      function refresh() {
+        const n = len(ta.value);
+        cnt.textContent = cap ? fmt(n) + " / " + fmt(cap) + (n > cap ? " · over the limit" : "") : fmt(n) + " characters";
+        cnt.className = "meter" + (cap && n > cap ? " over" : "");
+        sec.className = "sec" + (cap && n > cap ? " over" : "");
+        zh.disabled = en.disabled = !!asking || !!(current && current.example);
+      }
+      ta.addEventListener("input", () => { s.text = ta.value; refresh(); totals(); if (current.id) { current.updated = new Date().toISOString(); saveDraftsSoon(); } });
+      refresh();
+      sec.append(head, ta, row);
+      if (s.en) {
+        const d = document.createElement("details"); const sm = document.createElement("summary");
+        sm.textContent = "English version, for reference (" + fmt(len(s.en)) + " characters)";
+        const pre = document.createElement("pre"); pre.textContent = s.en;
+        const back = btn("Use the English again", "secondary small", () => { s.text = s.en; s.en = ""; renderResult(); if (current.id) saveDraftsSoon(); });
+        d.append(sm, pre, back); sec.appendChild(d);
+      }
+      box.appendChild(sec);
+      total += len(s.text);
+    });
+    totals();
+  }
+  function totals() {
+    const n = current ? current.sections.reduce((a, s) => a + len(s.text), 0) : 0;
+    const over = current ? current.sections.filter((s) => capOf(s.name) && len(s.text) > capOf(s.name)).length : 0;
+    $("total").textContent = (current ? current.sections.length + " sections · " : "") + fmt(n) + " characters" + (over ? " · " + over + " over the limit" : "");
+  }
+  function btn(text, cls, fn) { const b = document.createElement("button"); b.type = "button"; b.className = cls; b.textContent = text; b.addEventListener("click", fn); return b; }
+
+  // ---------- Asking ----------
+  function send(kind, q, extra) {
+    if (asking) return;
+    if (len(q) > ASK_LIMIT) { setStatus("This request is " + fmt(len(q)) + " characters; one ask holds " + fmt(ASK_LIMIT) + ".", true); return; }
+    const id = "a" + Date.now() + "-" + (++seq);
+    asking = Object.assign({ id, kind, question: q }, extra || {});
+    asking.timer = setTimeout(() => {
+      lastFailed = asking; asking = null; busy(false);
+      setStatus("Your Kin didn't answer within " + Math.round(ASK_WAIT / 1000) + " seconds. Kindroid sometimes drops an ask; choose Ask again to retry. A late answer still shows up here if it arrives.", true);
+      $("retry").hidden = false;
+    }, ASK_WAIT);
+    busy(true);
+    $("retry").hidden = true;
+    setStatus(kind === "draft" ? "Asking your Kin. This usually takes a few seconds, sometimes longer." : "Asking your Kin to rewrite " + extra.name + "…");
+    if (inFrame) parent.postMessage({ kin: "ask", id, question: q }, "*");
+    else setTimeout(() => onAsk({ kin: "ask", id, ok: false }), 400);
+  }
+  function busy(on) {
+    $("draft").disabled = on || meter() > ASK_LIMIT;
+    $("cancel").hidden = !on;
+    renderResultButtons();
+  }
+  function renderResultButtons() { document.querySelectorAll(".sec .row button").forEach((b) => { if (b.textContent !== "Copy") b.disabled = !!asking || !!(current && current.example); }); }
+  function onAsk(m) {
+    let job = asking && m.id === asking.id ? asking : null;
+    let late = false;
+    if (!job && lastFailed && m.id === lastFailed.id && !asking) { job = lastFailed; late = true; }
+    if (!job) return;
+    if (!late) clearTimeout(job.timer);
+    asking = null; lastFailed = null; busy(false); $("retry").hidden = true;
+    if (!m.ok || typeof m.text !== "string" || !m.text.trim()) {
+      lastFailed = job; $("retry").hidden = false;
+      setStatus(inFrame ? "Your Kin didn't return an answer. Choose Ask again to retry." : "Preview mode: this page is open outside Kindroid, so there is no Kin to ask.", true);
+      return;
+    }
+    if (job.kind === "draft") {
+      const v = values(job.tool);
+      current = { id: "d" + Date.now().toString(36), tool: job.tool, task: v.task || v.kind || "", title: TOOLS[job.tool].title_of(v),
+        created: new Date().toISOString(), inputs: Object.assign({}, v), sections: split(m.text), raw: m.text };
+      drafts.unshift(current); drafts = drafts.slice(0, KEEP_DRAFTS);
+      saveDrafts(); updateSavedTab();
+      if (tool !== job.tool) switchTool(job.tool, true);
+      renderResult();
+      const over = current.sections.filter((s) => capOf(s.name) && len(s.text) > capOf(s.name)).length;
+      setStatus((late ? "A late answer arrived. " : "") + "Draft ready and saved. " + (over ? over + (over === 1 ? " section is" : " sections are") + " over the Kindroid limit: use Fit in Chinese or Shorten in English." : "Review each section, then copy what you want."));
+    } else {
+      const s = job.draft.sections[job.index];
+      if (!s) return;
+      const text = m.text.trim().replace(/^#{1,6}[^\n]*\n/, "").trim();
+      if (job.mode === "zh") { if (!s.en) s.en = s.text; } else s.en = s.en || "";
+      s.text = text;
+      if (job.draft.id) { job.draft.updated = new Date().toISOString(); saveDrafts(); }
+      if (current === job.draft) renderResult();
+      const cap = capOf(s.name), n = len(text);
+      setStatus(s.name + " rewritten: " + fmt(n) + " / " + fmt(cap) + " characters." + (n > cap ? " Still over: try once more or trim it by hand." : ""), n > cap);
+    }
+  }
+  function draft() {
+    if (asking) return;
+    send("draft", question(tool), { tool });
+  }
+  function condense(i, mode) {
+    if (!current || current.example || asking) return;
+    const s = current.sections[i], cap = capOf(s.name);
+    if (!cap) return;
+    const target = Math.floor(cap * 0.95);
+    const src = mode === "zh" && s.en ? s.en : s.text;
+    const q = mode === "zh"
+      ? "Rewrite the Kindroid \"" + s.name + "\" text below in Simplified Chinese so the whole result is at most " + fmt(target) + " characters (the box holds " + fmt(cap) + "). Keep every fact and the same meaning. Keep personal names, place names and titles in Latin letters, and keep any spoken words or quoted dialogue in English. Return only the rewritten text: no heading, notes or character count.\n\nText:\n" + src
+      : "Shorten the Kindroid \"" + s.name + "\" text below in English so the whole result is at most " + fmt(target) + " characters (the box holds " + fmt(cap) + "). Keep the most important facts and the same voice. Return only the rewritten text: no heading, notes or character count.\n\nText:\n" + src;
+    send("condense", q, { draft: current, index: i, mode, name: s.name });
+  }
+
+  // ---------- Saved drafts ----------
+  function updateSavedTab() { $("tab-saved").textContent = "Saved drafts" + (drafts.length ? " (" + drafts.length + ")" : ""); }
+  function renderSaved() {
+    const box = $("drafts"); box.textContent = "";
+    if (!drafts.length) { const p = document.createElement("p"); p.className = "empty"; p.textContent = "No saved drafts yet. Each answer from your Kin is saved here."; box.appendChild(p); return; }
+    for (const d of drafts) {
+      const row = document.createElement("div"); row.className = "draft";
+      const info = document.createElement("div");
+      const t = document.createElement("div"); t.className = "t"; t.textContent = d.title || "Draft";
+      const m = document.createElement("div"); m.className = "m";
+      const n = (d.sections || []).reduce((a, s) => a + len(s.text), 0);
+      m.textContent = (TOOLS[d.tool] ? TOOLS[d.tool].title : d.tool) + " · " + new Date(d.updated || d.created).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) + " · " + fmt(n) + " characters";
+      info.append(t, m);
+      const acts = document.createElement("div"); acts.className = "actions"; acts.style.marginTop = "0";
+      acts.append(btn("Open", "small", () => openDraft(d)), btn("Delete", "danger small", () => {
+        if (!confirmDelete(row, d)) return;
+      }));
+      row.append(info, acts); box.appendChild(row);
+    }
+  }
+  function confirmDelete(row, d) {
+    const acts = row.querySelector(".actions"); acts.textContent = "";
+    const sure = btn("Delete it", "danger small", () => {
+      drafts = drafts.filter((x) => x !== d); if (current === d) current = null;
+      saveDrafts(); updateSavedTab(); renderSaved();
+    });
+    acts.append(document.createTextNode("Delete this draft? "), sure, btn("Keep", "secondary small", renderSaved));
+    sure.focus();
+    return false;
+  }
+  function openDraft(d) {
+    if (TOOLS[d.tool]) { forms[d.tool] = Object.assign({}, d.inputs || {}); saveForms(); }
+    current = d;
+    switchTool(TOOLS[d.tool] ? d.tool : "card", true);
+    renderResult();
+    setStatus("Opened the saved draft “" + (d.title || "Draft") + "”. Edits are saved as you type.");
+  }
+
+  // ---------- Tabs ----------
+  function switchTool(t, keepResult) {
+    tool = t;
+    document.querySelectorAll(".tab").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tool === t)));
+    $("view-saved").hidden = t !== "saved";
+    $("view-tool").hidden = t === "saved";
+    if (t === "saved") { renderSaved(); return; }
+    renderForm();
+    if (!keepResult) {
+      const latest = drafts.find((d) => d.tool === t);
+      if (latest) { current = latest; renderResult(); setStatus("Your latest " + TOOLS[t].title.toLowerCase() + " draft. Older ones are under Saved drafts."); }
+      else showExample();
+    }
+  }
+  document.querySelectorAll(".tab").forEach((b) => b.addEventListener("click", () => switchTool(b.dataset.tool)));
+
+  // ---------- Buttons ----------
+  $("draft").addEventListener("click", draft);
+  $("retry").addEventListener("click", () => {
+    const j = lastFailed; if (!j || asking) return;
+    lastFailed = null;
+    if (j.kind === "draft") send("draft", j.question, { tool: j.tool });
+    else send(j.kind, j.question, { draft: j.draft, index: j.index, mode: j.mode, name: j.name });
+  });
+  $("cancel").addEventListener("click", () => {
+    if (!asking) return;
+    clearTimeout(asking.timer); lastFailed = asking; asking = null; busy(false);
+    $("retry").hidden = false;
+    setStatus("Stopped waiting. If the answer arrives later it still shows up here.");
+  });
+  $("reset").addEventListener("click", () => { delete forms[tool]; saveForms(); renderForm(); showExample(); });
+  $("clear").addEventListener("click", () => {
+    forms[tool] = {}; for (const f of TOOLS[tool].fields) forms[tool][f.id] = f.type === "select" ? f.value : "";
+    saveForms(); renderForm(); setStatus("Details cleared.");
+  });
+  $("copyall").addEventListener("click", () => { if (current) copyText(joinSections(current.sections), "the full draft"); });
+
+  async function copyText(text, label) {
+    let ok = false;
+    try {
+      const a = document.createElement("textarea"); a.value = text; a.readOnly = true;
+      a.style.cssText = "position:fixed;left:0;top:0;width:2px;height:2px;opacity:.01";
+      document.body.append(a); a.focus(); a.select(); a.setSelectionRange(0, text.length);
+      ok = document.execCommand("copy"); a.remove();
+    } catch (e) { ok = false; }
+    if (!ok) { try { await navigator.clipboard.writeText(text); ok = true; } catch (e) { ok = false; } }
+    setStatus(ok ? "Copied " + label + "." : "Copying is blocked here. Select the text and use your device's copy command.", !ok);
+  }
+
+  // ---------- Start ----------
+  async function start() {
+    if (inFrame) {
+      parent.postMessage({ kin: "kins" }, "*");
+      try { const raw = await files.read("forms.json"); const d = raw ? JSON.parse(raw) : null; if (d && d.forms) forms = d.forms; } catch (e) {}
+      try { const raw = await files.read("drafts.json"); const d = raw ? JSON.parse(raw) : null; if (d && Array.isArray(d.drafts)) drafts = d.drafts; } catch (e) {}
+    } else {
+      $("kinbar").textContent = "Preview mode: this page is open outside Kindroid, so there is no Kin to ask and nothing is saved.";
+    }
+    updateSavedTab();
+    switchTool("card");
+  }
+  start();
+})();
+</script>
+</body>
+</html>

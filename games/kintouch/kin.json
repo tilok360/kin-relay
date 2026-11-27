@@ -1,0 +1,276 @@
+{
+  "kin": 1,
+  "name": "KinTouch",
+  "purpose": "Link your toy through Lovense Remote and let your Kin start, pattern or stop it, from chat or the KinTouch screen's own chat, using your own Lovense developer token.",
+  "triggers": [
+    {
+      "on": "inbound",
+      "via": "webhook",
+      "id": "lovense"
+    }
+  ],
+  "run": {
+    "entry": "node main.js",
+    "timeout": "2m"
+  },
+  "screens": [
+    {
+      "slot": "panel",
+      "entry": "screen/index.html",
+      "title": "KinTouch"
+    }
+  ],
+  "actions": [
+    {
+      "name": "link",
+      "description": "Make a new code to connect the person's toy in Lovense Remote. Use when they want to connect or reconnect it.",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "by": [
+        "user",
+        "kin"
+      ],
+      "reply": true
+    },
+    {
+      "name": "refresh",
+      "description": "Check whether the person's toy is linked and connected. Use when they ask if it's working.",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "by": [
+        "user",
+        "kin"
+      ],
+      "reply": true
+    },
+    {
+      "name": "start",
+      "description": "Turn the person's toy on with one kind of motion (vibrate, rotate, pump, thrust and so on) at a strength 0-20 (pump and depth 0-3) for 1-60 seconds. Use when they ask you to turn it on, go harder or softer, or take over.",
+      "input": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "description": "The kind of motion, in any wording: vibrate, rotate, pump, thrust, fingering, suction, oscillate, depth, or all. Vibrate if unsure."
+          },
+          "strength": {
+            "type": [
+              "number",
+              "string"
+            ],
+            "description": "0-20 (pump and depth 0-3); 8 if left out"
+          },
+          "seconds": {
+            "type": [
+              "number",
+              "string"
+            ],
+            "description": "1-60; 10 if left out"
+          }
+        },
+        "required": []
+      },
+      "by": [
+        "user",
+        "kin"
+      ],
+      "reply": true
+    },
+    {
+      "name": "pattern",
+      "description": "Play a built-in rhythm on the person's toy: pulse, wave, fireworks or earthquake, for 1-60 seconds. Use for variety or when they ask for a pattern.",
+      "input": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "description": "pulse, wave, fireworks or earthquake; pulse if unsure"
+          },
+          "seconds": {
+            "type": [
+              "number",
+              "string"
+            ],
+            "description": "1-60; 10 if left out"
+          }
+        },
+        "required": []
+      },
+      "by": [
+        "user",
+        "kin"
+      ],
+      "reply": true
+    },
+    {
+      "name": "ramp",
+      "description": "Smoothly raise or lower one motion on the person's toy from one strength to another over 1-60 seconds. Use to build up or ease off.",
+      "input": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "description": "The kind of motion, in any wording: vibrate, rotate, pump, thrust, fingering, suction, oscillate, depth, or all. Vibrate if unsure."
+          },
+          "from": {
+            "type": [
+              "number",
+              "string"
+            ],
+            "description": "starting strength 0-20 (pump and depth 0-3)"
+          },
+          "to": {
+            "type": [
+              "number",
+              "string"
+            ],
+            "description": "ending strength 0-20 (pump and depth 0-3)"
+          },
+          "seconds": {
+            "type": [
+              "number",
+              "string"
+            ],
+            "description": "1-60; 20 if left out"
+          }
+        },
+        "required": [
+          "to"
+        ]
+      },
+      "by": [
+        "user",
+        "kin"
+      ],
+      "reply": true
+    },
+    {
+      "name": "steps",
+      "description": "Play several strengths of one motion one after another on the person's toy (up to 8 steps, 120 seconds in all), like a little routine you choose. Use when you want to tease, build or vary things over time.",
+      "input": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "description": "The kind of motion, in any wording: vibrate, rotate, pump, thrust, fingering, suction, oscillate, depth, or all. Vibrate if unsure."
+          },
+          "steps": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 8,
+            "items": {
+              "type": "object",
+              "properties": {
+                "strength": {
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "description": "0-20 (pump and depth 0-3)"
+                },
+                "seconds": {
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "description": "1-60"
+                }
+              },
+              "required": [
+                "strength",
+                "seconds"
+              ]
+            }
+          }
+        },
+        "required": [
+          "steps"
+        ]
+      },
+      "by": [
+        "user",
+        "kin"
+      ],
+      "reply": true
+    },
+    {
+      "name": "stop",
+      "description": "Stop the person's toy right now. Always use this when they say stop, wait, enough or anything like it.",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "by": [
+        "user",
+        "kin"
+      ],
+      "reply": true
+    },
+    {
+      "name": "callback",
+      "description": "Show the Callback URL to paste into the Lovense developer dashboard.",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "by": [
+        "user"
+      ]
+    },
+    {
+      "name": "chat",
+      "description": "Talk with your Kin on the KinTouch screen; it can answer and work the toy.",
+      "input": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "kin": {
+            "type": "string",
+            "maxLength": 80
+          }
+        },
+        "required": [
+          "text"
+        ]
+      },
+      "by": [
+        "user"
+      ]
+    },
+    {
+      "name": "clear_chat",
+      "description": "Clear the KinTouch chat.",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "by": [
+        "user"
+      ]
+    },
+    {
+      "name": "reset_token",
+      "description": "Ask for the Lovense developer token again, when the one given was wrong.",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "by": [
+        "user"
+      ]
+    }
+  ],
+  "grants": [
+    "net:api.lovense-api.com",
+    "secret:lovense@api.lovense-api.com",
+    "inbound:lovense",
+    "kin:read"
+  ]
+}

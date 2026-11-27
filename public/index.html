@@ -157,6 +157,12 @@
         <p class="hint">Your data folder: <span id="dataFolder"></span></p>
       </section>
 
+      <section class="panel" id="secretsPanel" aria-labelledby="hSec" hidden>
+        <h4 id="hSec">App sign-ins</h4>
+        <p class="hint">Some apps (a Twitch co-host, a toy controller) sign in to another service. Paste the token each one asks for. It is kept only in your data folder, never shown again, and sent only to the website that app names.</p>
+        <div id="secretsList"></div>
+      </section>
+
       <section class="panel" aria-labelledby="hRelay">
         <h4 id="hRelay">Relay (tables with other people)</h4>
         <p class="hint">Everyone at a table uses the same relay address. Solo and Kin play don't need one.</p>

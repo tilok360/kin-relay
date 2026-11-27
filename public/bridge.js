@@ -78,6 +78,19 @@
         return reply({ kin: "files.write", path: m.path, ok: !!j.ok });
       }
       if (m.kin === "kins") return reply(kinsMsg());
+      if (m.kin === "open") { // a link the app shows (Kindroid opens it in the person's browser)
+        let ok = false; try { const u = new URL(String(m.url || "")); if (u.protocol === "https:" || u.protocol === "http:") { window.open(u.href, "_blank", "noopener,noreferrer"); ok = true; } } catch {}
+        return reply({ kin: "open", ok });
+      }
+      if (m.kin === "save") { // a file the app hands over (an export): saved through the browser's download
+        let ok = false;
+        try {
+          const blob = m.body instanceof Blob ? m.body : new Blob([typeof m.body === "string" ? m.body : JSON.stringify(m.body)], { type: "application/octet-stream" });
+          const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = String(m.name || "download").replace(/[\\/:*?"<>|]+/g, "_").slice(0, 120); document.body.append(a); a.click();
+          setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000); ok = true;
+        } catch {}
+        return reply({ kin: "save", ok, name: m.name });
+      }
       if (m.kin === "ask") {
         thinking(1);
         try {

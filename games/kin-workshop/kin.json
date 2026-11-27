@@ -1,0 +1,15 @@
+{
+  "kin": 1,
+  "name": "Kin Workshop",
+  "purpose": "Asks your attached Kin to draft character cards, roleplay game systems, or Room and Group setups from details you enter. Drafts are split into fields, counted and saved here for review.",
+  "screens": [
+    {
+      "slot": "panel",
+      "entry": "screen/index.html",
+      "title": "Kin Workshop"
+    }
+  ],
+  "grants": [
+    "kin:read"
+  ]
+}

@@ -1,0 +1,109 @@
+{
+  "kin": 1,
+  "name": "Kin Guesses Who",
+  "purpose": "A twenty-questions game where your Kin guesses a real public figure, checking candidates on Wikipedia. After a miss you can type the name to teach it; that name is checked on Wikipedia too.",
+  "run": {
+    "entry": "node main.js",
+    "timeout": "3m"
+  },
+  "screens": [
+    {
+      "slot": "panel",
+      "entry": "screen/index.html",
+      "title": "Kin Guesses Who"
+    }
+  ],
+  "actions": [
+    {
+      "name": "start_round",
+      "description": "Start a round of Kin Guesses Who: the person thinks of a real public figure and you guess who by asking yes/no questions. Use when they want to play twenty questions or Kin Guesses Who.",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "by": [
+        "user",
+        "kin"
+      ],
+      "reply": true
+    },
+    {
+      "name": "answer_question",
+      "description": "Pass the person's answer to your current Kin Guesses Who question or guess: yes, probably, dont_know, probably_not or no. Use right after they answer.",
+      "input": {
+        "type": "object",
+        "properties": {
+          "answer": {
+            "type": "string",
+            "enum": [
+              "yes",
+              "probably",
+              "dont_know",
+              "probably_not",
+              "no"
+            ]
+          }
+        },
+        "required": [
+          "answer"
+        ]
+      },
+      "by": [
+        "user",
+        "kin"
+      ],
+      "reply": true
+    },
+    {
+      "name": "give_up",
+      "description": "End the current Kin Guesses Who round when the person gives up or wants to reveal who it was.",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "by": [
+        "user",
+        "kin"
+      ],
+      "reply": true
+    },
+    {
+      "name": "teach_public_figure",
+      "description": "After you missed a Kin Guesses Who round, learn who it was: pass the public figure's name the person tells you.",
+      "input": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 100
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "by": [
+        "user",
+        "kin"
+      ],
+      "reply": true
+    },
+    {
+      "name": "quit",
+      "description": "Quit Kin Guesses Who: end the current round and close the game. Use when the person says they want to stop or quit the game.",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "by": [
+        "user",
+        "kin"
+      ]
+    }
+  ],
+  "grants": [
+    "kin:read",
+    "net:en.wikipedia.org",
+    "net:www.wikidata.org"
+  ]
+}

@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+:root{color-scheme:light dark;--bg:#f6f6f8;--card:#fff;--fg:#17171c;--mute:#62626e;--line:#e2e2e8;--acc:#7a4dff}
+@media(prefers-color-scheme:dark){:root{--bg:#131318;--card:#1d1d25;--fg:#f2f2f6;--mute:#a4a4b2;--line:#2e2e3a;--acc:#9d7bff}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.4 system-ui,sans-serif}
+main{max-width:480px;margin:0 auto;padding:20px 16px 40px;display:grid;gap:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px}
+h1{font-size:15px;margin:0;color:var(--mute);font-weight:600}
+.big{font-size:30px;font-weight:700;margin:4px 0 2px}
+.dot{display:inline-block;width:12px;height:12px;border-radius:50%;background:var(--mute);margin-right:8px}
+.dot.on{background:#2fb36b}
+.mute{color:var(--mute)}
+.seg{display:flex;gap:6px;margin-top:10px}
+.seg button{flex:1;min-height:46px;border:1px solid var(--line);background:var(--bg);color:var(--fg);border-radius:12px;font-size:16px}
+.seg button.sel{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
+.main{width:100%;min-height:56px;border:0;border-radius:14px;font-size:18px;font-weight:700;background:var(--acc);color:#fff}
+.main.stop{background:var(--card);color:var(--fg);border:2px solid var(--acc)}
+.pause{width:100%;min-height:46px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--fg);font-size:16px;margin-top:10px}
+.pause.sel{border-color:var(--acc);font-weight:700}
+input{display:block;width:100%;min-height:46px;margin-top:6px;padding:0 12px;border:1px solid var(--line);border-radius:12px;background:var(--bg);color:var(--fg);font-size:16px}
+ul{list-style:none;margin:8px 0 0;padding:0}
+li{padding:10px 0;border-top:1px solid var(--line);overflow-wrap:anywhere}
+li:first-child{border-top:0}
+li time{display:block;font-size:15px;color:var(--mute)}
+button:disabled{opacity:.6}
+</style></head><body><main>
+<div class="card">
+  <h1>Kin Co-Host</h1>
+  <div class="big"><span class="dot" id="dot"></span><span id="state">Off</span></div>
+  <div class="mute" id="note"></div>
+  <div style="margin-top:14px"><button class="main" id="power">Turn on</button></div>
+</div>
+<div class="card"><h1>Where are you streaming?</h1>
+  <div class="seg" id="plat"><button data-v="twitch">Twitch</button><button data-v="joystick">Joystick</button></div></div>
+<div class="card"><h1>Your channel</h1>
+  <div id="twbox"><label class="mute" for="twch">Twitch channel name</label><input id="twch" placeholder="yourname" autocapitalize="off" autocomplete="off">
+  <label class="mute" for="twbot" style="display:block;margin-top:12px">Bot account name (optional)</label><input id="twbot" placeholder="yourbotaccount" autocapitalize="off" autocomplete="off">
+  <p class="mute" style="margin:8px 0 0">With a bot account, your Kin posts under that name and the chat token you paste in this app's settings must be the bot's. Leave it empty to post as your own channel. Paste the token without "oauth:" in front.</p></div>
+  <div id="jsbox"><label class="mute" for="jsid">Joystick channel ID (required for Joystick)</label><input id="jsid" placeholder="Your own Joystick channel ID" autocomplete="off">
+  <p class="mute" id="learned" style="margin:8px 0 0"></p><p class="mute" style="margin:8px 0 0">Your Kin only answers chat in the channel ID you type here. Joystick stays off until it is filled in.</p></div></div>
+<div class="card"><h1>How chatty?</h1>
+  <div class="seg" id="chat"><button data-v="quiet">Quiet</button><button data-v="normal">Normal</button><button data-v="lively">Lively</button></div>
+  <button class="pause" id="pause">Pause</button><p class="mute" style="margin:8px 0 0">Pause keeps the connection but your Kin stays silent. Changing platform reconnects.</p></div>
+<div class="card"><h1>Saving credits</h1>
+  <p class="mute" style="margin:8px 0 0">Each line your Kin writes itself is one Kin request, and those use your Kindroid credits.</p>
+  <div class="mute" style="margin-top:12px">Thank-yous and welcomes</div>
+  <div class="seg" id="thx"><button data-v="quick">Ready-made (free)</button><button data-v="kin">Kin's own words</button></div>
+  <p class="mute" style="margin:8px 0 0">Either way, everything that happens within a few seconds is thanked in one message.</p>
+  <div class="mute" style="margin-top:12px">Most Kin requests per hour</div>
+  <div class="seg" id="cap"><button data-v="10">10</button><button data-v="20">20</button><button data-v="40">40</button><button data-v="80">80</button></div>
+  <p class="mute" id="used" style="margin:10px 0 0"></p>
+  <p class="mute" style="margin:8px 0 0">!kin questions come first. Reactions and banter stop at 70% of the limit, and banter only follows real chat.</p></div>
+<div class="card"><h1>Last messages sent</h1>
+  <p class="mute" id="problem" style="margin:8px 0 0;color:#d9822b"></p>
+  <p class="mute" id="empty">Nothing yet. Turn the co-host on and what your Kin says in chat will show here.</p>
+  <ul id="list"></ul></div>
+</main>
+<script>
+let cfg={platform:"twitch",twitchChannel:"",twitchBot:"",joystickChannelId:"",on:false,chattiness:"normal",paused:false,thanks:"quick",maxPerHour:20},st=null,loaded=false,learned="",typing=0;
+const $=i=>document.getElementById(i);
+const ask=(path)=>parent.postMessage({kin:"files.read",path},"*");
+addEventListener("message",e=>{
+  const d=e.data||{};
+  if(d.kin!=="files.read")return;
+  let o=null;try{o=d.body?JSON.parse(d.body):null}catch{}
+  if(d.path==="config.json"){if(o&&!loaded){cfg={...cfg,...o};$("twch").value=cfg.twitchChannel||"";$("twbot").value=cfg.twitchBot||"";$("jsid").value=cfg.joystickChannelId||""}loaded=true}
+  if(d.path==="status.json")st=o;
+  draw();
+});
+function save(){parent.postMessage({kin:"files.write",path:"config.json",body:JSON.stringify(cfg)},"*");draw()}
+function draw(){
+  $("learned").textContent=cfg.joystickChannelId?"Answering chat in channel "+cfg.joystickChannelId+".":"No Joystick channel ID yet.";
+  const conn=st&&st.connected&&cfg.on&&st.platform===cfg.platform;
+  $("dot").className="dot"+(conn?" on":"");
+  $("state").textContent=!cfg.on?"Off":conn?(cfg.paused?"Connected, paused":"Connected"):"Not connected";
+  $("note").textContent=!cfg.on?"Your Kin is not in the chat.":conn?"Your Kin is in the "+(cfg.platform==="twitch"?"Twitch chat for "+cfg.twitchChannel+(cfg.twitchBot?" as "+cfg.twitchBot:""):"Joystick chat")+".":(st&&st.note&&st.note!=="Switched off.")?st.note:"Starting. This can take up to a minute.";
+  $("problem").textContent=(st&&st.problem)||"";
+  $("twbox").style.display=cfg.platform==="twitch"?"":"none";$("jsbox").style.display=cfg.platform==="twitch"?"none":"";
+  const p=$("power");p.textContent=cfg.on?"Turn off":"Turn on";p.className="main"+(cfg.on?" stop":"");
+  for(const b of $("plat").children)b.className=b.dataset.v===cfg.platform?"sel":"";
+  for(const b of $("chat").children)b.className=b.dataset.v===cfg.chattiness?"sel":"";
+  for(const b of $("thx").children)b.className=b.dataset.v===(cfg.thanks==="kin"?"kin":"quick")?"sel":"";
+  const cap=[10,20,40,80].includes(+cfg.maxPerHour)?+cfg.maxPerHour:20;
+  for(const b of $("cap").children)b.className=+b.dataset.v===cap?"sel":"";
+  const c=(st&&st.calls)||{},hr=(c.times||[]).filter(x=>Date.now()-x<3600000).length;
+  const today=c.day===new Date().toISOString().slice(0,10)?(c.today||0):0;
+  $("used").textContent="Kin requests used: "+hr+" of "+cap+" this hour, "+today+" today (UTC).";
+  $("pause").disabled=!cfg.on;$("pause").textContent=cfg.paused?"Resume":"Pause";$("pause").className="pause"+(cfg.paused?" sel":"");
+  const l=$("list");l.textContent="";
+  const sent=(st&&st.sent)||[];
+  $("empty").style.display=sent.length?"none":"";
+  for(const m of sent.slice(0,10)){
+    const li=document.createElement("li"),t=document.createElement("time");
+    t.textContent=new Date(m.t).toLocaleTimeString([],{hour:"numeric",minute:"2-digit"});
+    li.append(t,document.createTextNode(m.text));l.append(li);
+  }
+}
+$("power").onclick=()=>{cfg.on=!cfg.on;save()};
+// Names are saved once typing stops (or the field is left), so half-typed names never get joined.
+function later(){clearTimeout(typing);typing=setTimeout(save,1500)}
+function now(){clearTimeout(typing);save()}
+for(const [id,key,fix] of [["twch","twitchChannel",v=>v.replace(/^#/,"")],["twbot","twitchBot",v=>v.replace(/^@/,"")],["jsid","joystickChannelId",v=>v]]){
+  $(id).oninput=e=>{cfg[key]=fix(e.target.value.trim());later()};
+  $(id).onchange=now;
+  $(id).onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();now();e.target.blur()}};
+}
+$("pause").onclick=()=>{cfg.paused=!cfg.paused;save()};
+$("plat").onclick=e=>{const v=e.target.dataset&&e.target.dataset.v;if(v){cfg.platform=v;save()}};
+$("chat").onclick=e=>{const v=e.target.dataset&&e.target.dataset.v;if(v){cfg.chattiness=v;save()}};
+$("thx").onclick=e=>{const v=e.target.dataset&&e.target.dataset.v;if(v){cfg.thanks=v;save()}};
+$("cap").onclick=e=>{const v=e.target.dataset&&e.target.dataset.v;if(v){cfg.maxPerHour=+v;save()}};
+function poll(){ask("config.json");ask("status.json")}
+poll();setInterval(poll,5000);draw();
+</script><script>
+window.KQ = {
+  name: "Kin Co-Host",
+  ask: () => ({ title: cfg.on ? "Turn the co-host off and quit?" : "Quit Kin Co-Host?",
+    text: (cfg.on ? "Your Kin leaves your live chat and the co-host turns off. " : "The co-host is already off. ") + "Kin Co-Host is built to run all the time, so Kindroid still wakes it about once a minute to check whether you turned it back on. To stop even that, switch the app off or remove it in Kindroid Apps.",
+    go: cfg.on ? "Turn off and quit" : "Quit" }),
+  before: () => { if (!cfg.on) return;
+    return new Promise((res) => { addEventListener("message", function h(e) { const d = e.data || {}; if (d.kin === "files.write" && d.path === "config.json") { removeEventListener("message", h); res(); } }); cfg.on = false; save(); }); },
+  closedText: "The co-host is off and your Kin has left the chat. Kindroid still wakes the app about once a minute to read its settings; to stop that too, switch it off or remove it in Kindroid Apps."
+};
+</script>
+<!-- kin-quit: a Quit button that stops this app and closes its screen -->
+<style>
+button.kq-btn.kq-btn{position:fixed;top:10px;right:10px;z-index:2147483000;min-height:34px;padding:4px 14px;border-radius:999px;border:1px solid #f18c9a99;background:#1b1a22e6;color:#f7b8c0;font:600 13px/1 system-ui,-apple-system,"Segoe UI",sans-serif;cursor:pointer;box-shadow:0 2px 10px #0006}
+button.kq-btn.kq-btn:hover{border-color:#f18c9a}
+button.kq-btn.kq-btn.kq-inline{position:static;z-index:auto;min-height:30px;box-shadow:none;margin-left:auto;flex:none}
+#kq-layer{position:fixed;inset:0;z-index:2147483001;display:grid;place-items:center;padding:16px;background:#0c0b11f5;color:#f3f2f7;font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+#kq-layer[hidden]{display:none}
+#kq-box{width:100%;max-width:430px;text-align:center}
+#kq-box h2{margin:0 0 8px;font-size:22px;line-height:1.2}
+#kq-box p{color:#bdbacb;margin:0 0 18px}
+#kq-box .kq-row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+#kq-box button{min-height:46px;padding:8px 18px;border-radius:12px;font:600 15px system-ui,-apple-system,"Segoe UI",sans-serif;cursor:pointer}
+#kq-box .kq-go{background:#a5394b;border:1px solid #f18c9a;color:#fff}
+#kq-box .kq-no{background:transparent;border:1px solid #5c5a68;color:#eceaf3}
+</style>
+<div id="kq-layer" role="dialog" aria-modal="true" aria-labelledby="kq-title" hidden><div id="kq-box"></div></div>
+<script>
+/* Quit: asks first, lets the app finish its own stop step (window.KQ.before), then stops every
+   timer, ignores any late answer from Kindroid and covers the screen. "Open again" reloads the screen. */
+(() => {
+  const C = window.KQ || {};
+  const NAME = C.name || document.title || "this app";
+  const L = document.getElementById("kq-layer"), B = document.getElementById("kq-box"), Q = [];
+  // window.KQ.after: elements to place a Quit button right after (e.g. each view's status bar); otherwise one floats top right.
+  const quitButton = (inline) => { const b = document.createElement("button"); b.type = "button"; b.className = "kq-btn" + (inline ? " kq-inline" : ""); b.textContent = "Quit"; b.setAttribute("aria-haspopup", "dialog"); b.onclick = ask; Q.push(b); return b; };
+  for (const sel of C.after || []) { const t = document.querySelector(sel); if (t) t.after(quitButton(true)); }
+  if (!Q.length) document.body.appendChild(quitButton(false));
+  let quit = false, closing = false;
+  window.addEventListener("message", (e) => { if (quit) e.stopImmediatePropagation(); }, true);
+  const mk = (text, cls, fn) => { const b = document.createElement("button"); b.type = "button"; b.className = cls; b.textContent = text; b.onclick = fn; return b; };
+  function show(title, text, buttons) {
+    B.replaceChildren();
+    const h = document.createElement("h2"); h.id = "kq-title"; h.textContent = title;
+    const p = document.createElement("p"); p.textContent = text;
+    const row = document.createElement("div"); row.className = "kq-row"; row.append(...buttons);
+    B.append(h, p, row); L.hidden = false;
+    if (buttons[0]) buttons[0].focus();
+  }
+  function ask() {
+    const a = typeof C.ask === "function" ? C.ask() : {};
+    show(a.title || "Quit " + NAME + "?",
+      a.text || "This stops anything in progress and closes the app. Nothing runs until you open it again. Copy anything you want to keep first.",
+      [mk(a.go || "Quit", "kq-go", doQuit), mk("Keep going", "kq-no", () => { L.hidden = true; })]);
+  }
+  async function doQuit() {
+    if (closing) return; closing = true;
+    show("Closing " + NAME + "…", C.closingText || "Stopping what it was doing.", []);
+    if (typeof C.before === "function") {
+      try { await Promise.race([Promise.resolve(C.before()), new Promise((r) => setTimeout(r, C.waitMs || 45000))]); } catch (e) {}
+    }
+    quit = true;
+    let id = setTimeout(() => {}, 0);
+    while (id > 0) { clearTimeout(id); clearInterval(id); id--; }
+    for (const n of document.body.children) if (n !== L && n.tagName !== "SCRIPT" && n.tagName !== "STYLE") n.style.display = "none";
+    show(NAME + " is closed", C.closedText || "Nothing is running. You can close this panel now.", [mk("Open again", "kq-no", () => location.reload())]);
+  }
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !L.hidden && !closing) L.hidden = true; });
+})();
+</script>
+<!-- /kin-quit -->
+</body></html>

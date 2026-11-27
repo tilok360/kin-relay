@@ -21,7 +21,7 @@ const { RelayLink } = require("./lib/relay-link");
 const I = require("./lib/installer");
 const IO = require("./public/chario.js");
 
-const VERSION = "1.2.2";
+const VERSION = "1.3.0";
 // Games you add go to APPS_DIR: the games/ folder next to this file when run from the zip, or your data folder in the
 // Windows app (its program folder is replaced on every update). Games that come with the Windows app are read from
 // BUILTIN_DIR; one you add with the same name takes its place.
@@ -59,6 +59,41 @@ function loadApps() {
 }
 loadApps();
 
+// ---------- sign-ins an app asks for, what apps told their Kins, and scheduled runs ----------
+// grants like "secret:twitchchat@irc-ws.chat.twitch.tv": the app may use that sign-in, only toward that host
+const grantedSecrets = (app) => (app.manifest.grants || []).map((g) => /^secret:([A-Za-z0-9_.-]+)@([^\s@]+)$/.exec(String(g))).filter(Boolean).map((m) => ({ name: m[1], host: m[2] }));
+function secretsFor(slug) {
+  const app = apps.get(slug), all = S.secretsAll(), out = {};
+  if (app) for (const g of grantedSecrets(app)) { const v = all[slug + ":" + g.name]; if (v) out[g.name] = { host: g.host, value: v }; }
+  return out;
+}
+// What an app told a Kin (kin tell) is put in front of that Kin's next questions from the same app.
+function memoryFor(slug, kinId) {
+  if (!slug) return "";
+  const list = S.readJSON(path.join(S.appDir(slug), "tells.json"), []);
+  const t = Date.now();
+  const facts = (Array.isArray(list) ? list : []).filter((x) => x && x.text && (!x.kin || x.kin === kinId) && t - Date.parse(x.at) < (x.ttl ? x.ttl : 72) * 3600000).slice(-8).map((x) => String(x.text));
+  return facts.join(" | ").slice(0, 900);
+}
+const { cronMatches } = require("./lib/cron");
+const scheduleOf = (app) => (app.manifest.triggers || []).filter((t) => t && t.on === "schedule" && t.cron);
+let lastCron = "";
+function schedulerTick() {
+  const d = new Date(), key = d.toISOString().slice(0, 16);
+  if (key === lastCron) return; lastCron = key;
+  for (const app of apps.values()) if (app.manifest.run && scheduleOf(app).some((t) => cronMatches(t.cron, d))) { runner(app.slug).background({ trigger: "schedule" }); markRan(app.slug); }
+}
+const ranFile = (slug) => path.join(S.appDir(slug), "last-scheduled.json");
+const markRan = (slug) => { try { S.writeJSON(ranFile(slug), { at: Date.now() }); } catch {} };
+// An app that runs on a schedule while Kin Relay was closed catches up the first time it is opened.
+function catchUp(slug) {
+  const app = apps.get(slug); if (!app || !app.manifest.run || !scheduleOf(app).length) return false;
+  const last = S.readJSON(ranFile(slug), { at: 0 }).at || 0;
+  if (Date.now() - last < 20 * 3600000) return false;
+  markRan(slug); runner(slug).background({ trigger: "schedule", catchUp: true }); return true;
+}
+const alwaysApps = () => [...apps.values()].filter((a) => a.manifest.run && (a.manifest.triggers || []).some((t) => t && t.on === "always"));
+
 // ---------- Kins, relay addresses ----------
 function relaySecrets(slug) {
   const f = path.join(S.appDir(slug), "relay.json");
@@ -74,7 +109,7 @@ function envFor(slug) {
   const current = g.current;
   const addrs = {};
   if (s.relay && apps.get(slug).inbound.length) for (const [id, sec] of Object.entries(relaySecrets(slug))) addrs[id] = A.make(s.relay, boxOf(sec));
-  return { kins, current, addrs, player: s.name || "" };
+  return { kins, current, addrs, player: s.name || "", secrets: secretsFor(slug) };
 }
 
 // ---------- runs ----------
@@ -125,8 +160,20 @@ async function askKin(question, kinId, slug) {
   const kin = s.kins.find((k) => k.id === kinId) || (g && s.kins.find((k) => k.id === g.current)) || s.kins.find((k) => k.id === s.currentKin) || s.kins[0];
   if (!kin) return { ok: false, error: "Add a Kin on the Characters tab first (Solo needs nothing)." };
   if (!S.apiKey()) return { ok: false, error: "Add your Kindroid API key in Settings first (Solo needs nothing)." };
-  try { return { ok: true, text: await KD.ask({ apiKey: S.apiKey(), kin, question, style: s.askStyle, playerName: s.name }) }; }
+  try { return { ok: true, text: await KD.ask({ apiKey: S.apiKey(), kin, question, style: s.askStyle, playerName: s.name, memory: memoryFor(slug, kin.id) }) }; }
   catch (e) { log("Kin ask:", e.message); return { ok: false, error: e.message, kind: e.kind }; }
+}
+
+async function chatOf(kinId, slug, days) {
+  const s = S.settings(), g = slug ? S.gameKins(s, slug) : null;
+  const kin = s.kins.find((k) => k.id === kinId) || (g && s.kins.find((k) => k.id === g.current)) || s.kins.find((k) => k.id === s.currentKin) || s.kins[0];
+  if (!kin) return { ok: false, error: "Add a Kin on the Characters tab first." };
+  if (!S.apiKey()) return { ok: false, error: "Add your Kindroid API key in Settings first." };
+  try {
+    const all = await KD.history({ apiKey: S.apiKey(), kin, limit: 100 });
+    const since = Date.now() - Math.max(1, days || 1) * 86400000;
+    return { ok: true, messages: all.filter((m) => !m.at || (m.at > 1e12 ? m.at : m.at * 1000) >= since).map((m) => ({ from: m.from, name: m.name, text: m.text, at: m.at })) };
+  } catch (e) { log("Kin chat:", e.message); return { ok: false, error: e.message }; }
 }
 
 // ---------- HTTP ----------
@@ -180,6 +227,7 @@ function publicState() {
     relay: rl.length ? (rl.every((x) => x.state === "online") ? "online" : rl.some((x) => x.state === "error") ? "error" : "connecting") : (s.relay ? "idle" : "off"),
     relayWhy: (rl.find((x) => x.why) || {}).why || "",
     dataFolder: S.ROOT,
+    secrets: [...apps.values()].flatMap((a) => grantedSecrets(a).map((g) => ({ slug: a.slug, app: a.manifest.name || a.slug, name: g.name, host: g.host, set: !!S.secretsAll()[a.slug + ":" + g.name] }))),
   };
 }
 
@@ -188,6 +236,10 @@ async function api(req, res, url) {
   if (p === "/internal/ask") {
     if (req.headers["x-run-token"] !== RUN_TOKEN) return json(res, 403, { ok: false });
     const b = await readBody(req); return json(res, 200, await askKin(String(b.question || "").slice(0, 8000), String(b.kin || ""), String(b.slug || "")));
+  }
+  if (p === "/internal/chat") {
+    if (req.headers["x-run-token"] !== RUN_TOKEN) return json(res, 403, { ok: false });
+    const b = await readBody(req); return json(res, 200, await chatOf(String(b.kin || ""), String(b.slug || ""), Number(b.days) || 1));
   }
   // Everything else only for the Kin Relay page itself (not a game's screen, not another website).
   if (req.headers["x-room-token"] !== TOKEN || (req.headers.origin && req.headers.origin !== `http://localhost:${PORT}`)) return json(res, 403, { ok: false, error: "not allowed" });
@@ -304,7 +356,16 @@ async function api(req, res, url) {
       if (!app) return json(res, 404, { ok: false });
       const wakes = (app.manifest.actions || []).some((x) => x.name === "wake");
       if (wakes) runner(app.slug).action("wake", {}, S.gameKins(S.settings(), app.slug).current).catch(() => {});
-      return json(res, 200, { ok: true, started: wakes });
+      const caught = !wakes && catchUp(app.slug);
+      if (alwaysApps().includes(app)) runner(app.slug).startAlways();
+      return json(res, 200, { ok: true, started: wakes || caught });
+    }
+    case "/api/secret": { // a sign-in an app asked for (value "" removes it); the value is never sent back
+      if (!app) return json(res, 404, { ok: false });
+      const name = String(b.name || ""); if (!grantedSecrets(app).some((g) => g.name === name)) return json(res, 200, { ok: false, error: "This app doesn't ask for that sign-in." });
+      S.setSecret(app.slug, name, typeof b.value === "string" ? b.value.trim() : "");
+      if (runners.has(app.slug)) { runners.get(app.slug).stop(); runners.delete(app.slug); if (alwaysApps().includes(app)) runner(app.slug).startAlways(); } // restart with the new sign-in
+      return json(res, 200, { ok: true, state: publicState() });
     }
     case "/api/reload": loadApps(); refreshLinks(); return json(res, 200, { ok: true, state: publicState() });
     case "/api/remove": {
@@ -405,6 +466,7 @@ function installRoute(req, res) {
       if (r.conflict) return json(res, 200, { ok: false, conflict: true, slug: r.slug, name: r.name });
       if (runners.has(r.slug)) { runners.get(r.slug).stop(); runners.delete(r.slug); }
       loadApps(); refreshLinks();
+      { const na = apps.get(r.slug); if (na && alwaysApps().includes(na)) runner(na.slug).startAlways(); }
       log(`Added ${r.name} (${r.files} files) to games/${r.slug}`);
       return json(res, 200, { ok: true, game: r, state: publicState() });
     } catch (e) {
@@ -468,6 +530,8 @@ function start(opts = {}) {
         const s = S.settings();
         if (s.ownRelay) startOwnRelay(s.ownRelayPort || 8787);
         setTimeout(refreshLinks, s.ownRelay ? 600 : 0);
+        for (const a of alwaysApps()) runner(a.slug).startAlways(); // apps that stay connected (Twitch chat...) run while Kin Relay is open
+        schedTimer = setInterval(schedulerTick, 20000); schedTimer.unref && schedTimer.unref();
         if (opts.open) openBrowser(url);
         resolve({ port: PORT, url, version: VERSION, dataFolder: S.ROOT });
       }
@@ -475,7 +539,8 @@ function start(opts = {}) {
     listen(BASE_PORT, 10);
   });
 }
-function stop() { stopOwnRelay(); for (const l of links.values()) l.stop(); for (const r of runners.values()) r.stop(); try { server.close(); } catch {} }
+let schedTimer = null;
+function stop() { clearInterval(schedTimer); stopOwnRelay(); for (const l of links.values()) l.stop(); for (const r of runners.values()) r.stop(); try { server.close(); } catch {} }
 function openBrowser(url) {
   try {
     if (process.platform === "win32") spawn("cmd", ["/c", "start", "", url], { stdio: "ignore", detached: true, windowsHide: true }).unref();
@@ -484,7 +549,7 @@ function openBrowser(url) {
 }
 const major = Number(process.versions.node.split(".")[0]);
 if (major < 22) console.warn(`Note: this is Node.js ${process.versions.node}. Kin Relay needs Node.js 22 or newer for tables with other people.`);
-process.on("exit", stopOwnRelay);
+process.on("exit", () => { stopOwnRelay(); for (const r of runners.values()) r.stop(); });
 module.exports = { start, stop, VERSION };
 if (require.main === module) {
   process.on("SIGINT", () => { stopOwnRelay(); process.exit(0); });

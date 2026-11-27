@@ -22,7 +22,7 @@ function stage() {
   fs.rmSync(STAGE, { recursive: true, force: true }); fs.mkdirSync(STAGE, { recursive: true });
   for (const n of ["server.js", "relay.js", "lib", "public", "README.txt", "ADAPTER-GUIDE.md", "LICENSE"]) if (fs.existsSync(path.join(ROOT, n))) copy(path.join(ROOT, n), path.join(STAGE, n));
   // the four games that come with Kin Relay (not ones you added while testing)
-  for (const g of ["kin-casino", "kin-holdem", "kin-games-table-arcade", "kin-games-board-cards"]) copy(path.join(ROOT, "games", g), path.join(STAGE, "games", g));
+  for (const g of require(path.join(ROOT, "lib", "bundled.js"))) copy(path.join(ROOT, "games", g), path.join(STAGE, "games", g));
   copy(path.join(__dirname, "main.js"), path.join(STAGE, "main.js"));
   copy(path.join(__dirname, "assets", "icon.png"), path.join(STAGE, "icon.png"));
   fs.writeFileSync(path.join(STAGE, "package.json"), JSON.stringify({ name: "kin-relay", productName: "Kin Relay", version: VERSION, description: "Play your Kindroid games on your PC and host tables for friends.", author: "tilok360", license: "MIT", main: "main.js" }, null, 2));

@@ -1,0 +1,43 @@
+{
+  "kin": 1,
+  "name": "Cards Against Kin-manatee",
+  "purpose": "A fill-in-the-blank party card game. Solo against computer players is free (no credits). Play with your Kin, or host friends and their Kins at a table (those use Kindroid credits).",
+  "triggers": [
+    {
+      "on": "inbound",
+      "via": "webhook",
+      "id": "table"
+    }
+  ],
+  "run": {
+    "entry": "node main.js",
+    "timeout": "5m"
+  },
+  "screens": [
+    {
+      "slot": "panel",
+      "entry": "screen/index.html",
+      "title": "Kin-manatee"
+    }
+  ],
+  "actions": [
+    {
+      "name": "wake",
+      "description": "Open Cards Against Kin-manatee and see how the card game stands: round, points and who is Czar. Use when the person wants to play the card game or asks how it is going.",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "by": [
+        "user",
+        "kin"
+      ],
+      "reply": true
+    }
+  ],
+  "grants": [
+    "kin:read",
+    "inbound:table",
+    "net:in.kinusercontent.com"
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "kin": 1,
+  "name": "Vignette Prompt Workshop",
+  "purpose": "Builds and checks Vignette Avatar Generator, Avatar Description, and selfie scene prompts locally on screen.",
+  "grants": [],
+  "screens": [
+    {
+      "slot": "panel",
+      "entry": "screen/index.html",
+      "title": "Vignette Prompt Workshop"
+    }
+  ]
+}

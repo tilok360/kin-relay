@@ -9,7 +9,7 @@ const ROOT = path.resolve(__dirname, "..");
 const OUT = process.env.WEB_OUT || path.join(ROOT, "web-dist");
 const VERSION = /const VERSION = "([\d.]+)"/.exec(fs.readFileSync(path.join(ROOT, "server.js"), "utf8"))[1];
 const I = require(path.join(ROOT, "lib", "installer.js"));
-const GAMES = ["kin-casino", "kin-holdem", "kin-games-table-arcade", "kin-games-board-cards"];
+const GAMES = require(path.join(ROOT, "lib", "bundled.js"));
 
 function copy(from, to) {
   const st = fs.statSync(from);

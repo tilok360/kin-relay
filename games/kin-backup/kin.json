@@ -1,0 +1,15 @@
+{
+  "kin": 1,
+  "name": "Kin Backup",
+  "purpose": "Saves Kins you aren't using: every field, avatar and share details, with history, tags and import from Kindroid, JSON or a codex file. Plus a prompt library for your favorite prompts.",
+  "screens": [
+    {
+      "slot": "panel",
+      "entry": "screen/index.html",
+      "title": "Kin Backup"
+    }
+  ],
+  "links": [
+    "kin-backup-export.json"
+  ]
+}
