@@ -21,7 +21,7 @@ const { RelayLink } = require("./lib/relay-link");
 const I = require("./lib/installer");
 const IO = require("./public/chario.js");
 
-const VERSION = "1.3.0";
+const VERSION = "1.3.1";
 // Games you add go to APPS_DIR: the games/ folder next to this file when run from the zip, or your data folder in the
 // Windows app (its program folder is replaced on every update). Games that come with the Windows app are read from
 // BUILTIN_DIR; one you add with the same name takes its place.
@@ -112,7 +112,7 @@ function relaySecrets(slug) {
 }
 function envFor(slug) {
   const s = S.settings(), g = S.gameKins(s, slug);
-  const kins = g.kins.map((k) => ({ id: k.id, name: k.name }));
+  const kins = g.kins.map((k) => ({ id: k.id, name: k.name, profile: S.kinProfile(k) }));
   const current = g.current;
   const addrs = {};
   if (s.relay && apps.get(slug).inbound.length) for (const [id, sec] of Object.entries(relaySecrets(slug))) addrs[id] = A.make(s.relay, boxOf(sec));

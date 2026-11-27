@@ -59,7 +59,7 @@ TABLE CHAT
    owner's PC. If a Kin can't answer (no key, wrong key, offline) the chat says so. OOC is people only. Your name at
    tables comes from Settings, or from the persona in your Kindroid export when you import it.
 
-APPS THAT COME WITH KIN RELAY (1.3.0)
+APPS THAT COME WITH KIN RELAY (1.3.1)
    Works fully: Kin Hold'em, Kin Casino, Cards Against Kin-manatee, Kin Games (Table & Arcade, Board & Cards),
    Kin Battleship, Chess Clash, Kin Guesses Who, Kin Backup, Kin Workshop, Vignette Prompt Workshop and
    Vignette Prompt Partner.

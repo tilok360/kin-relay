@@ -8,12 +8,13 @@ const PORT = Number(process.env.MOCK_PORT) || 47811;
 const CTRL = process.env.MOCK_CTRL || "/tmp/mock-ctrl.json"; // {"delayMs": 1500} slows each answer; {"status": 500} fails them
 const recentBy = {}; // per API key: when the last requests came: Kindroid's own limit is 10 per 30 seconds, answered with 429
 http.createServer((req, res) => {
+  const T0 = Date.now(); // when this request arrived (the log line is written when the answer is ready), so tests can see overlaps
   let b = ""; req.on("data", (c) => (b += c)); req.on("end", async () => {
     let ctl = {}; try { ctl = JSON.parse(fs.readFileSync(CTRL, "utf8")); } catch {}
     if (ctl.delayMs) await new Promise((r) => setTimeout(r, ctl.delayMs));
     let j = {}; try { j = JSON.parse(b); } catch {}
     const auth = String(req.headers.authorization || "");
-    fs.appendFileSync(LOG, JSON.stringify({ path: req.url, bearer: auth.startsWith("Bearer kn_"), t: Date.now(), keyLen: auth.length, tag: auth.slice(14, 15), ai_id: j.ai_id, share_code: j.share_code, msg: String(j.message || (j.conversation && j.conversation[0].text) || "").slice(0, 400) }) + "\n");
+    fs.appendFileSync(LOG, JSON.stringify({ path: req.url, bearer: auth.startsWith("Bearer kn_"), t: Date.now(), ts0: T0, chat: /chat line|friend at the table|shared chat room/.test(String(j.message || "")), keyLen: auth.length, tag: auth.slice(14, 15), ai_id: j.ai_id, share_code: j.share_code, msg: String(j.message || (j.conversation && j.conversation[0].text) || "").slice(0, 400) }) + "\n");
     if (req.method === "GET" && req.url.startsWith("/v1/get-chat-messages")) { fs.appendFileSync(LOG, JSON.stringify({ path: "/get-chat-messages", tag: auth.slice(14, 15), t: Date.now() }) + "\n"); if (!auth.startsWith("Bearer kn_good")) { res.writeHead(401); return res.end("Unauthorized"); } res.writeHead(200, { "content-type": "application/json" }); return res.end(JSON.stringify({ messages: [{ id: "1", sender: "user", sender_type: "user", display_name: "Casey", timestamp: Date.now(), message: "hello there" }, { id: "2", sender: "ai", sender_type: "ai", display_name: "Kin", timestamp: Date.now(), message: "hi, how are you?" }] })); }
     const nowT = Date.now(), recent = (recentBy[auth] = recentBy[auth] || []); while (recent.length && nowT - recent[0] > 30000) recent.shift(); recent.push(nowT);
     if (recent.length > 10) { fs.appendFileSync(LOG, JSON.stringify({ path: req.url, status: 429, t: Date.now() }) + "\n"); res.writeHead(429); return res.end("Too Many Requests"); }

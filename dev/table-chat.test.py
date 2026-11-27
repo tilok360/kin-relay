@@ -47,7 +47,7 @@ for f in (LOG, CTRL):
 start(["node", os.path.join(HERE, "mock-kindroid.js")], {"MOCK_LOG": LOG, "MOCK_PORT": "47812", "MOCK_CTRL": CTRL})
 start(["node", os.path.join(ROOT, "relay.js")], {"PORT": "47822", "HOST": "127.0.0.1", "RELAY_QUIET": "1"})
 for port, data in ((47940, "/tmp/kgrChatA"), (47941, "/tmp/kgrChatB")):
-    start(["node", os.path.join(ROOT, "server.js")], {"KGR_PORT": str(port), "KGR_DATA": data, "KGR_NO_OPEN": "1", "KGR_API_BASE": "http://127.0.0.1:47812/v1"}, data + ".log")
+    start(["node", os.path.join(ROOT, "server.js")], {"KGR_PORT": str(port), "KGR_DATA": data, "KGR_NO_OPEN": "1", "KGR_API_BASE": "http://127.0.0.1:47812/v1", "KGR_ROOM_CHAIN": "1"}, data + ".log")
 time.sleep(1.8)
 RELAY = "http://127.0.0.1:47822/"
 NAMES_A = ["Crikey", 'Earl "Gator" Vance', "Darken Rahl", "Panis Rahl"]; IDS_A = [f"chatAiIdA{i:02d}xxxxxxxx"[:20] for i in range(4)]
@@ -124,10 +124,11 @@ try:
         say(f, 'Earl, you sly dog')  # first name, spoken to
         new = wait(lambda: [m for m in chat_of("/tmp/kgrChatA", "kin-holdem") if m["kind"] == "kin" and m["who"] == 'Earl "Gator" Vance'], 40)
         check("holdem: 'Earl, ...' (first name) reaches Earl \"Gator\" Vance", bool(new))
+        wait(lambda: {IDS_A[0], IDS_A[1], IDS_A[2]} <= {l["ai_id"] for l in mock() if l.get("ai_id")}, 20)
         ids_asked = {l["ai_id"] for l in mock() if l.get("ai_id")}
-        check("holdem: each Kin spoke through its own AI ID with the owner's key", {IDS_A[0], IDS_A[1], IDS_A[2]} <= ids_asked and all(l.get("bearer") for l in mock() if l.get("ai_id")))
+        check("holdem: each Kin spoke through its own AI ID with the owner's key", {IDS_A[0], IDS_A[1], IDS_A[2]} <= ids_asked and all(l.get("bearer") for l in mock() if l.get("ai_id")), f"asked={sorted(ids_asked)} no-bearer={[l for l in mock() if l.get('ai_id') and not l.get('bearer')][:1]}")
         # OOC never reaches a Kin
-        time.sleep(8); nreq = len(mock()); nkin = len([m for m in chat_of("/tmp/kgrChatA", "kin-holdem") if m["kind"] == "kin"])
+        time.sleep(20); nreq = len(mock()); nkin = len([m for m in chat_of("/tmp/kgrChatA", "kin-holdem") if m["kind"] == "kin"])
         f.locator('#ptabs button[data-t="ooc"]').click(); say(f, "ooc: just people here"); time.sleep(8)
         check("holdem: OOC chat is never shown to a Kin (no request, no Kin line)", len(mock()) == nreq and len([m for m in chat_of("/tmp/kgrChatA", "kin-holdem") if m["kind"] == "kin"]) == nkin)
         f.locator('#ptabs button[data-t="chat"]').click()
@@ -237,6 +238,10 @@ try:
         b.close()
 finally:
     for p_ in procs: p_.terminate()
+# One Kin writes at a time: no two Kin requests (to the mock Kindroid API) overlap, whatever the table.
+_iv = sorted((r["ts0"], r["t"]) for r in mock() if r.get("path", "").endswith("send-message") and r.get("ts0") and r.get("chat"))
+_ov = max([sum(1 for (s1, e1) in _iv if s1 < e0 and s0 < e1) for (s0, e0) in _iv] or [0])
+check("conductor: two Kins never write at the same time (no overlapping Kin chat requests)", _ov <= 1 and len(_iv) > 0, f"{len(_iv)} requests, max overlap {_ov}")
 bad = [k for k, v in results.items() if not v]
 print(f"\nTABLE CHAT {'PASS' if not bad else 'FAIL'} ({len(results) - len(bad)}/{len(results)})")
 sys.exit(1 if bad else 0)

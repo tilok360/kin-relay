@@ -130,7 +130,7 @@ try:
         ty = saw_typing(fa)
         check("manatee: 'X is typing…' shows while a Kin answers", "is typing" in ty, ty)
         got = wait(lambda: len(kin_lines(DA)) > n0, 60)
-        wait(lambda: not (view(DA, SLUG).get("table") or {}).get("typing"), 60); A.wait_for_timeout(3000); ctrl()
+        wait(lambda: len(kin_lines(DA)) - n0 >= 2, 40); wait(lambda: not (view(DA, SLUG).get("table") or {}).get("typing"), 60); A.wait_for_timeout(3000); ctrl()  # a second Kin follows after a short pause
         mine = [m for m in mchat(DA) if m["kind"] == "person"]
         check("manatee: my line is under my name, not Host", mine and mine[-1]["who"] == "Casey Tester", mine and mine[-1]["who"])
         check("manatee: a Kin answers a person's line", bool(got), str([m["who"] for m in kin_lines(DA)]))
@@ -182,6 +182,10 @@ try:
         check("manatee: no page errors", not errors, "; ".join(errors)[:300])
 finally:
     for pr in procs: pr.kill()
+# One Kin writes at a time: no two Kin requests (to the mock Kindroid API) overlap, whatever the table.
+_iv = sorted((r["ts0"], r["t"]) for r in mock() if r.get("path", "").endswith("send-message") and r.get("ts0") and r.get("chat"))
+_ov = max([sum(1 for (s1, e1) in _iv if s1 < e0 and s0 < e1) for (s0, e0) in _iv] or [0])
+check("conductor: two Kins never write at the same time (no overlapping Kin chat requests)", _ov <= 1 and len(_iv) > 0, f"{len(_iv)} requests, max overlap {_ov}")
 bad = [k for k, v in results.items() if not v]
 print(f"MANATEE CHAT {'PASS' if not bad else 'FAIL'} ({len(results)-len(bad)}/{len(results)})")
 sys.exit(1 if bad else 0)

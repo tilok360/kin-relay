@@ -2,6 +2,7 @@
  "level": "full",
  "tested": [
   "Tables with your Kins",
-  "Table chat: Kins answer people and each other, typing indicator, clear errors"
+  "Table chat: Kins answer people and each other, typing indicator, clear errors",
+  "Group chat works like Kindroid's: after each line ONE Kin is chosen to speak (or none) by @Name, relevance, who has been quiet and personality; one Kin writes at a time after a short pause; a different Kin may follow (3 Kin lines in a row at most)"
  ]
 }
