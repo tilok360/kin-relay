@@ -88,6 +88,9 @@ let outq = {}, lastSent = {}, backoff = {}, fails = {};
 let budget = { hour: 0, day: 0, hourAt: now(), dayAt: now() };
 let lastDelivery = null;
 let trigger = {};
+// The name this person plays under: what they typed, else the name in Kin Relay Settings (or the persona in their Kindroid export), else "Player".
+const PLAYER = String(process.env.KGR_PLAYER || "").replace(/[\u0000-\u001f]/g, "").trim().slice(0, 40);
+let typingNow = {};  // seat id -> {name, since}: one of my Kins is being asked for a chat line right now
 const DEF_CFG = () => ({ mode: "off", myId: rid(8), name: "", pw: "", prevPw: "", prevUntil: 0, hostAddr: "", hostId: "", tableName: "", joined: false, kinId: "", kinIds: [], kinTalk: true, pub: null, mine: null, kinTurn: null });
 const DEF_SETTINGS = () => ({ start: 1000, sb: 10, bb: 20, timer: 90, autoDeal: true, rebuys: true, paused: false, botN: 0, botLevel: "normal" });
 
@@ -192,7 +195,12 @@ async function tablePost(m) {
   const e = { id: rid(6), ts: now(), who: clean(m.who, NAME_MAX), owner: m.owner || "", kind: m.kind, text: clean(m.text) };
   chat.push(e); await saveChats();
   for (const [id, mm] of inMembers()) enqueue(mm.addr, { t: "chat", m: e, lid: id === m.owner ? m.lid : undefined });
-  if (m.kind === "person") await mentions(e);
+  if (m.seat) { delete (cfg.typingRemote || {})[m.seat]; }
+  if (cfg.mode === "host" && T) {
+    if (m.kind === "person") { T.chain = 0; T.chainSeats = []; }
+    else if (m.kind === "kin") { T.chain = (T.chain || 0) + 1; T.chainSeats = (T.chainSeats || []).concat(m.seat || "").slice(-6); T.spoke = T.spoke || {}; if (m.seat) T.spoke[m.seat] = now(); }
+    if (m.kind === "person" || m.kind === "kin") converse({ who: e.who, kind: m.kind, text: e.text, seat: m.seat || "" });
+  }
 }
 const dealerSay = (text) => tablePost({ who: "Dealer", kind: "dealer", text });
 // Out-of-character chat: people only. Kept apart from `chat`, which is the only chat a Kin is ever shown.
@@ -243,30 +251,165 @@ async function kinDecide(k, turn) {
   const r = await kin(["ask", prompt.slice(0, 7900), "--kin", k.id]);
   let j = null;
   if (r.ok) { const s = r.out.replace(/^```(?:json)?\s*|\s*```$/g, ""); try { j = JSON.parse(s); } catch { const a = s.indexOf("{"), b = s.lastIndexOf("}"); if (a >= 0 && b > a) { try { j = JSON.parse(s.slice(a, b + 1)); } catch {} } } }
-  if (!j) return { type: L.canCheck ? "check" : "fold", to: 0, fallback: true };
+  if (!j) { if (!r.ok) { note = `${k.name} couldn't be asked for its move (${clean(r.err, 120) || "no answer"}), so it ${L.canCheck ? "checked" : "folded"}.`; await reportKinErr(`${k.name} couldn't be asked for its move: ${clean(r.err, 120) || "no answer"}`); } return { type: L.canCheck ? "check" : "fold", to: 0, fallback: true }; }
   const type = ["fold", "check", "call", "raise", "bet", "allin", "all-in"].includes(String(j.action).toLowerCase()) ? String(j.action).toLowerCase().replace("bet", "raise").replace("all-in", "allin") : (L.canCheck ? "check" : "fold");
   return { type, to: int(j.amount, 0, 1e9, 0) };
 }
-// One line of table talk from my Kin (asked by its owner, or because someone @mentioned it).
-// An @mention past the hourly cap gets no answer; the owner's own "Let it talk" always works and counts.
-// Kin chat lines (asked by its owner, or answering an @mention) are private drafts: only the owner sees them,
-// and they reach the table only if the owner posts them. Nothing a Kin writes in chat is shared unreviewed.
+// ---------- table talk: a flowing conversation ----------
+// Anyone's chat line (a person's or a Kin's) can start a reply from another Kin, so the table talks like a table.
+// Each Kin speaks through ITS OWNER'S copy and key: the host asks its own Kins directly and sends a "talk" request to
+// each guest's copy for the guests' Kins. Who answers: whoever was addressed (@Name, or "Name," at the start) first, then a
+// Kin whose name was mentioned, else the Kin that has been quiet longest. Never more than MAX_CHAIN Kin lines in a row
+// without a person speaking, a short rest for each Kin, a table-wide limit per minute, and Kindroid's own limit of
+// 10 requests per 30 seconds is waited out by Kin Relay while "X is typing…" shows.
+const MAX_CHAIN = 3, KIN_GAP_MS = 20000, TABLE_ASKS_PER_MIN = 8, TALK_BUDGET_MS = 100000, JOB_TTL_MS = 180000, BANTER_GAP_MS = 90000, REMOTE_TYPING_MS = 120000;
+const reEsc = (n) => String(n).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const kinSeats = () => (T ? T.seats.filter((s) => s.kind === "kin") : []);
+// A Kin's name and its first name ("Earl" for Earl "Gator" Vance) when no other Kin at the table shares it.
+function nameParts(s) {
+  const first = (String(s.name).match(/[A-Za-z\u00C0-\u024F][\w'\u00C0-\u024F-]{2,}/) || [""])[0];
+  const clash = first && kinSeats().some((x) => x.id !== s.id && new RegExp("(^|[^\\w])" + reEsc(first) + "(?![\\w])", "i").test(x.name));
+  return [String(s.name)].concat(first && first.toLowerCase() !== String(s.name).toLowerCase() && !clash ? [first] : []);
+}
+// 2 = spoken to (@Name, or Name, / Name: / Name? at the start), 1 = named in passing, 0 = not mentioned.
+function addressedBy(text, s) {
+  let best = 0;
+  for (const n of nameParts(s).map(reEsc)) {
+    if (new RegExp("(^|[^\\w])@" + n + "(?![\\w])", "i").test(text)) return 2;
+    if (new RegExp("^\\s*(?:(?:hey|hi|yo|ok|okay|so|well|and|thanks|thank you)[,\\s]+)?" + n + "\\s*[,:?!]", "i").test(text)) return 2;
+    if (new RegExp("(^|[^\\w])" + n + "(?![\\w])", "i").test(text)) best = 1;
+  }
+  return best;
+}
+function pickSpeakers(e) {
+  const seats = kinSeats().filter((s) => s.id !== e.seat);
+  if (!seats.length) return [];
+  const chain = T.chain || 0;
+  if (e.kind === "kin" && chain >= MAX_CHAIN) return [];
+  const spoke = T.spoke || {}, rest = (a, b) => (spoke[a.id] || 0) - (spoke[b.id] || 0), inChain = T.chainSeats || [];
+  const room = Math.min(3, MAX_CHAIN - (e.kind === "kin" ? chain : 0));
+  let picks = [];
+  if (/(^|[^\w])@(all|everyone|everybody|kins|table)(?![\w])/i.test(e.text)) picks = seats.slice().sort(rest);
+  else {
+    const spokenTo = seats.filter((s) => addressedBy(e.text, s) === 2).sort(rest);
+    picks = spokenTo.length ? spokenTo : seats.filter((s) => addressedBy(e.text, s) === 1 && !inChain.includes(s.id)).slice(0, 1);
+  }
+  if (!picks.length) {
+    // Nobody named: one Kin who has been quiet longest. A Kin's reply to a Kin carries on for one more line, not forever.
+    if (e.kind === "kin" && chain >= 2) return [];
+    const t = now();
+    picks = seats.filter((s) => !inChain.includes(s.id) && t - (spoke[s.id] || 0) > KIN_GAP_MS).sort(rest).slice(0, 1);
+  }
+  return picks.slice(0, Math.max(0, room));
+}
+function converse(e, why) {
+  if (cfg.mode !== "host" || !T || !e.text) return;
+  const picks = e.pick ? [e.pick] : pickSpeakers(e);
+  if (!picks.length) return;
+  const t = now(); T.askTimes = (T.askTimes || []).filter((x) => t - x < 60000);
+  cfg.talkQ = Array.isArray(cfg.talkQ) ? cfg.talkQ : [];
+  for (const s of picks) {
+    const addressed = addressedBy(e.text, s) === 2;
+    if (cfg.talkQ.some((j) => j.seat === s.id)) continue;
+    if (!addressed && !e.pick && T.askTimes.length >= TABLE_ASKS_PER_MIN) { note = "The Kins are pacing themselves so Kindroid's rate limit isn't hit."; continue; }
+    T.askTimes.push(t);
+    cfg.talkQ.push({ seat: s.id, kinId: s.kinId, owner: s.owner, ts: t, why: why || `${e.who} just ${e.kind === "kin" ? "said this" : "spoke"} in the table chat${addressed ? ", to you" : ""}. Join the conversation naturally.` });
+  }
+  while (cfg.talkQ.length > 8) cfg.talkQ.shift();
+}
+function typingList() {
+  const t = now(), out = [];
+  for (const [id, x] of Object.entries(typingNow)) out.push({ id, name: x.name, since: x.since });
+  for (const [id, x] of Object.entries(cfg.typingRemote || {})) { if (x.until > t) out.push({ id, name: x.name, since: x.since }); else delete cfg.typingRemote[id]; }
+  return out;
+}
+function tableCtx() {
+  const v = publicView();
+  const board = (v.board || []).map(cardName).join(", ") || "none";
+  const seats = v.seats.map((s) => `${quoteText(s.name, NAME_MAX)} ${s.stack}${s.folded ? " (folded)" : ""}`).join(", ");
+  return `Table: hand ${v.handNo || 0}, ${v.street === "waiting" ? "between hands" : v.street}, pot ${v.pot || 0}, board ${board}. Chips: ${seats}. Latest: ${quoteText((v.log || []).slice(-5).join("; "), 400) || "nothing yet"}.`;
+}
+// One failure line in the table chat per kind of problem per minute, so a missing key is never silent and never spams.
+async function reportKinErr(text) {
+  note = clean(text, 200);
+  cfg.errAt = cfg.errAt && typeof cfg.errAt === "object" ? cfg.errAt : {};
+  const key = text.replace(/^.*?(couldn't|can't)/, "").slice(0, 60), t = now();
+  if (t - (cfg.errAt[key] || 0) < 60000) return;
+  cfg.errAt[key] = t;
+  if (cfg.mode === "host") await tablePost({ who: "Kin Relay", kind: "dealer", text: clean(text, 300) });
+}
+const FATAL_ERR = /API key|Settings first|did not accept|refused \(403|could not find that Kin|Add a Kin|Kin Relay is not answering/i;
+// Run the Kins that were asked to talk. Mine answer here; a guest's Kin gets a request on the guest's own copy.
+async function drainTalk() {
+  if (cfg.mode !== "host" || !T) { cfg.talkQ = []; return; }
+  cfg.talkQ = Array.isArray(cfg.talkQ) ? cfg.talkQ : [];
+  const t0 = now(); let guard = 0;
+  while (cfg.talkQ.length && guard++ < 12) {
+    if (now() - t0 > TALK_BUDGET_MS) break; // the rest waits for the next run (nextWake)
+    const job = cfg.talkQ.shift();
+    if (now() - job.ts > JOB_TTL_MS) continue;
+    const s = seatOf(job.seat); if (!s) continue;
+    if (job.owner === cfg.myId) { if (await speakLocal(s, job)) cfg.talkQ.length = 0; }
+    else {
+      const m = T.members[job.owner]; if (!m || m.status !== "in") continue;
+      cfg.typingRemote = cfg.typingRemote || {};
+      cfg.typingRemote[s.id] = { name: s.name, since: now(), until: now() + REMOTE_TYPING_MS };
+      enqueue(m.addr, { t: "talk", why: job.why, from: "", chatTail: recentChat(14), ctx: tableCtx() });
+      if (inMembers().length) shareState();
+    }
+  }
+}
+// My own Kin answers. Returns true when the problem will repeat for every Kin (no key, wrong key, no subscription).
+async function speakLocal(s, job) {
+  const k = allKins.find((x) => x.id === s.kinId);
+  if (!k || cfg.kinTalk === false) return false;
+  typingNow[s.id] = { name: s.name, since: now() };
+  if (inMembers().length) shareState();
+  await writeView();
+  let r; try { r = await kinChatLine(k, job.why, { mention: true }); } finally { delete typingNow[s.id]; }
+  let fatal = false;
+  if (r.err) { await reportKinErr(`${s.name} couldn't reply: ${r.err}`); fatal = !!r.fatal; }
+  else if (r.text) {
+    if (cfg.kinAuto !== false) await tablePost({ who: s.name, owner: cfg.myId, kind: "kin", text: r.text, seat: s.id });
+    else addDraft(k, r.text, "");
+  }
+  if (inMembers().length) shareState();
+  await writeView();
+  return fatal;
+}
+// After a big hand one Kin may react (once in a while), and a reply to that can carry on for one more line.
+function bigHandBanter(h) {
+  if (cfg.mode !== "host" || !T || idle() || now() - (T.banterAt || 0) < BANTER_GAP_MS) return;
+  const won = (h.result.winners || []).reduce((a, w) => a + (w.amount || 0), 0);
+  if (won < 10 * T.settings.bb && !h.players.some((p) => p.allIn)) return;
+  const seats = kinSeats(), spoke = T.spoke || {};
+  const win = h.result.winners && h.result.winners.map((w) => seatOf(w.id)).find((s) => s && s.kind === "kin");
+  const pick = win || seats.slice().sort((a, b) => (spoke[a.id] || 0) - (spoke[b.id] || 0))[0];
+  if (!pick) return;
+  T.banterAt = now(); T.chain = 0; T.chainSeats = [];
+  const names = (h.result.winners || []).map((w) => `${w.name} (${w.amount}${w.hand ? ", " + w.hand.toLowerCase() : ""})`).join(", ");
+  converse({ who: "Dealer", kind: "kin", text: "hand over", seat: "", pick }, `The hand just ended: ${names} won. Say something about it, in your own voice, like a player at the table would.`);
+}
+// Kin chat lines go straight to the table by default. If the owner turned that off they are private drafts: only the
+// owner sees them, and they reach the table only if the owner posts them.
 function addDraft(k, text, from) {
   cfg.drafts = (Array.isArray(cfg.drafts) ? cfg.drafts : []).concat({ id: rid(6), kinId: k.id, name: k.name, text, from: from || "", ts: now() }).slice(-5);
   note = from ? `${k.name} drafted a reply to ${from}. Review it before it goes to the table.` : `${k.name} drafted a line. Review it before it goes to the table.`;
 }
-async function kinChatLine(k, why, mention = false) {
-  if (mention && (kinUsed() >= kinCap() || idle())) return "";
+// One line from one of my Kins. Returns { text } (empty = nothing to say), or { err, fatal } so a failure is shown, never silent.
+async function kinChatLine(k, why, o = {}) {
+  if (o.mention && idle()) return { text: "" };
+  if (kinUsed() >= kinCap()) return { err: `this hour's ${kinCap()} Kin requests are used (raise the limit in the Kins panel)` };
   countKin();
-  const v = cfg.mode === "host" ? publicView() : (cfg.pub || {});
-  const prompt = kinPromptHead(k, cfg.name) +
-    `${why}\nTable right now: hand ${v.handNo || 0}, ${v.street || "between hands"}, pot ${v.pot || 0}. Board: ${(v.board || []).map(cardName).join(", ") || "none"}.\nRecent table chat:\n${cfg.mode === "host" ? recentChat() : quoteText(cfg.chatTail || "", 3000)}\n` +
-    `Never reveal your own hole cards. Write only your one chat line, under 160 characters, without your name in front. If you have nothing to say, write exactly SKIP.`;
+  const host = cfg.mode === "host", v = host ? publicView() : (cfg.pub || {});
+  const prompt = kinPromptHead(k, cfg.name || PLAYER || "your person") +
+    `${why}\n${host ? tableCtx() : (cfg.talkCtx || `Table right now: hand ${v.handNo || 0}, ${v.street || "between hands"}, pot ${v.pot || 0}.`)}\nRecent table chat (oldest first):\n${host ? recentChat(14) : quoteText(cfg.chatTail || "", 3000)}\n` +
+    `Talk like a friend at the table: react to what was just said, and to the other players or Kins by name when it fits. Never reveal your own hole cards. Write only your one chat line, under 160 characters, without your name in front. If you really have nothing to add, write exactly SKIP.`;
   const r = await kin(["ask", prompt.slice(0, 7900), "--kin", k.id]);
-  if (!r.ok) return "";
+  if (!r.ok) { const err = clean(r.err, 200) || "no answer from Kindroid"; return { err, fatal: FATAL_ERR.test(err) }; }
   let s = clean(r.out, 200).replace(/^["“]|["”]$/g, "").replace(new RegExp("^\\s*\\**" + k.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\**\\s*:\\s*", "i"), "").trim();
-  if (!s || /^SKIP\.?$/i.test(s) || explicit(s)) return "";
-  return s.slice(0, 200);
+  if (!s || /^SKIP\.?$/i.test(s) || explicit(s)) return { text: "" };
+  return { text: s.slice(0, 200) };
 }
 
 // ---------- host: the table ----------
@@ -355,9 +498,9 @@ function publicView() {
     name: T.name, solo: !!T.solo, settings: T.settings, handNo: T.handNo, street: h ? h.street : "waiting", board: h ? h.board : [],
     pot: h ? P.potTotal(h) : 0, bb: T.settings.bb, dealer: h ? h.players[h.button].id : T.buttonId || "", toAct: toAct ? toAct.id : "",
     deadline: toAct ? T.deadline : 0, seats, log: h ? h.log.slice(-14) : [], result: h && h.result ? h.result : null,
-    ach: T.ach || {}, achNew: h && h.street === "done" ? T.achNew || [] : [],
+    typing: typingList(), ach: T.ach || {}, achNew: h && h.street === "done" ? T.achNew || [] : [],
     nextDealAt: T.nextDealAt || 0, humans: humans(), maxHumans: MAX_HUMANS,
-    people: [{ id: cfg.myId, name: cfg.name, host: true, online: true }].concat(inMembers().map(([id, m]) => ({ id, name: m.name, host: false, online: !!m.seen && now() - m.seen < ONLINE_MS }))),
+    people: [{ id: cfg.myId, name: cfg.name || PLAYER || "Player", host: true, online: true }].concat(inMembers().map(([id, m]) => ({ id, name: m.name, host: false, online: !!m.seen && now() - m.seen < ONLINE_MS }))),
   };
 }
 // Each player gets the public view plus their own two cards; nobody else's.
@@ -404,6 +547,7 @@ async function afterAction() {
     if (!T.resultSaid) {
       T.resultSaid = true;
       for (const w of h.result.winners) await dealerSay(`${w.name} wins ${w.amount}${w.hand ? " with " + w.hand.toLowerCase() : ""}.`);
+      bigHandBanter(h);
       // Achievements for this hand, kept per seat for the session and shown to everyone at the table.
       T.ach = T.ach && typeof T.ach === "object" ? T.ach : {};
       T.achNew = [];
@@ -458,15 +602,6 @@ async function timeouts() {
   }
   if (T.nextDealAt && now() >= T.nextDealAt) { if (idle()) T.nextDealAt = 0; else await deal(); } // nobody around: wait for a person to deal
 }
-// Someone @mentioned a Kin in the table chat: its owner's copy may let it answer.
-async function mentions(e) {
-  const esc = (n) => n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  for (const s of T.seats.filter((x) => x.kind === "kin")) {
-    if (!new RegExp("(^|[^\\w])@" + esc(s.name) + "(?![\\w])", "i").test(e.text)) continue;
-    if (s.owner === cfg.myId) { if (cfg.kinTalk) { const k = allKins.find((x) => x.id === s.kinId); const line = k ? await kinChatLine(k, `${e.who} just spoke to you in the table chat.`, true) : ""; if (line) addDraft(k, line, e.who); } }
-    else { const m = T.members[s.owner]; if (m && m.status === "in") enqueue(m.addr, { t: "mention", from: e.who, chatTail: recentChat() }); }
-  }
-}
 
 async function hostGot(p) {
   const from = p.from;
@@ -497,12 +632,14 @@ async function hostGot(p) {
       const turn = String(ev.turnId || ""); if (!turn || turn !== T.kinTurnId) continue;
       await applyMove("k:" + from, String(ev.type || ""), Number(ev.to) || 0, turn); // only the move: any text in the delivery is ignored
     }
+    else if (ev.t === "talkEnd") { delete (cfg.typingRemote || {})["k:" + from]; }
+    else if (ev.t === "talkErr") { const sx = seatOf("k:" + from); delete (cfg.typingRemote || {})["k:" + from]; if (sx) await reportKinErr(`${sx.name} couldn't reply: ${clean(ev.text, 160) || "no answer"}`); }
     else if (ev.t === "say" || ev.t === "kinSay" || ev.t === "ooc") {
       const text = clean(ev.text); if (!text) continue;
       if (ev.lid && await dedupe(ev.t + ":" + from + ":" + String(ev.lid).slice(0, 20))) continue;
       if (explicit(text)) { enqueue(m.addr, { t: "error", text: "Not posted: this table's chat is safe for work.", lid: ev.lid }); continue; }
       if (ev.t === "ooc") await oocPost({ who: m.name, owner: from, lid: ev.lid, text });
-      else if (ev.t === "kinSay") { const s = seatOf("k:" + from); if (s) await tablePost({ who: s.name, owner: from, kind: "kin", text }); }
+      else if (ev.t === "kinSay") { const s = seatOf("k:" + from); if (s) await tablePost({ who: s.name, owner: from, kind: "kin", text, seat: s.id }); }
       else await tablePost({ who: m.name, owner: from, kind: "person", lid: ev.lid, text });
     }
     else if (ev.t === "rebuy") {
@@ -528,7 +665,7 @@ async function memberGot(p) {
   for (const ev of p.events.slice(0, 60)) {
     if (!ev || typeof ev !== "object") continue;
     if (ev.t === "joinack") { if (!cfg.joined) { cfg.joinStage = "received"; note = "The host got your request. Waiting to be seated."; } }
-    else if (ev.t === "welcome") { cfg.joined = true; cfg.joinStage = "admitted"; cfg.pub = ev.pub || null; chat = (ev.chat || []).map(safeMsg).filter(Boolean); ooc = (ev.ooc || []).map(safeMsg).filter(Boolean); await saveChats(); note = "You're seated."; }
+    else if (ev.t === "welcome") { cfg.joined = true; cfg.joinStage = "admitted"; cfg.pub = ev.pub || null; { const wk = myKin(); if (wk) enqueue(cfg.hostAddr, { t: "kin", kin: { id: wk.id, name: wk.name } }); } chat = (ev.chat || []).map(safeMsg).filter(Boolean); ooc = (ev.ooc || []).map(safeMsg).filter(Boolean); await saveChats(); note = "You're seated."; }
     else if (ev.t === "state") {
       cfg.pub = ev.pub || null;
       const L = ev.mine && ev.mine.legal && typeof ev.mine.legal === "object" ? ev.mine.legal : null;
@@ -548,11 +685,17 @@ async function memberGot(p) {
       const d = await kinDecide(k, { ...t, hole: (t.hole || []).slice(0, 2), view: { ...t.view, log: Array.isArray(t.view.log) ? t.view.log.map((x) => clean(x, 200)) : [], seats: Array.isArray(t.view.seats) ? t.view.seats : [] } });
       enqueue(cfg.hostAddr, { t: "kinAct", turnId: id, type: d.type, to: d.to });
     }
-    else if (ev.t === "mention") {
-      const k = myKin(); if (!k || !cfg.kinTalk) continue;
-      cfg.chatTail = clean(ev.chatTail, 3000);
-      const line = await kinChatLine(k, `${clean(ev.from, NAME_MAX)} just spoke to you in the table chat.`, true);
-      if (line) addDraft(k, line, clean(ev.from, NAME_MAX));
+    else if (ev.t === "talk" || ev.t === "mention") {
+      const k = myKin(), seat = "k:" + cfg.myId;
+      if (!k || cfg.kinTalk === false || cfg.mode !== "member") { enqueue(cfg.hostAddr, { t: "talkEnd" }); continue; }
+      cfg.chatTail = clean(ev.chatTail, 3000); cfg.talkCtx = clean(ev.ctx, 1500);
+      const why = clean(ev.why, 300) || `${clean(ev.from, NAME_MAX)} just spoke to you in the table chat.`;
+      typingNow[seat] = { name: k.name, since: now() };
+      let r; try { r = await kinChatLine(k, why, { mention: true }); } finally { delete typingNow[seat]; }
+      if (r.err) { note = `${k.name} couldn't reply: ${r.err}`; enqueue(cfg.hostAddr, { t: "talkErr", text: clean(r.err, 160) }); }
+      else if (!r.text) enqueue(cfg.hostAddr, { t: "talkEnd" });
+      else if (cfg.kinAuto !== false) enqueue(cfg.hostAddr, { t: "kinSay", lid: rid(6), text: r.text });
+      else { addDraft(k, r.text, clean(ev.from, NAME_MAX)); enqueue(cfg.hostAddr, { t: "talkEnd" }); }
     }
     else if (ev.t === "rotate") { cfg.prevPw = cfg.pw; cfg.prevUntil = now() + 10 * 60000; const nk = String(ev.pw || ""); if (/^[0-9a-f]{64}$/.test(nk)) cfg.pw = nk; }
     else if (ev.t === "error") { note = clean(ev.text, 200); if (ev.lid) { pendingChat = pendingChat.filter((x) => x.lid !== ev.lid); pendingOoc = pendingOoc.filter((x) => x.lid !== ev.lid); } }
@@ -569,8 +712,8 @@ async function memberGot(p) {
 async function doCmd(c) {
   const t = c.t;
   if (t === "name") {
-    cfg.name = clean(c.name, NAME_MAX);
-    if (cfg.mode === "host" && cfg.name) { const s = seatOf("h:" + cfg.myId); if (s) s.name = cfg.name; await saveTable(); shareState(); }
+    cfg.name = clean(c.name, NAME_MAX) || PLAYER || cfg.name || "Player";
+    if (cfg.mode === "host") { const s = seatOf("h:" + cfg.myId); if (s) s.name = cfg.name; await saveTable(); shareState(); }
     return;
   }
   if (t === "bring") {
@@ -583,6 +726,7 @@ async function doCmd(c) {
     return;
   }
   if (t === "kinTalk") { cfg.kinTalk = !!c.on; return; }
+  if (t === "kinAuto") { cfg.kinAuto = !!c.on; note = cfg.kinAuto ? "Your Kin's lines now go straight to the table." : "Your Kin's lines now wait for you to post them."; return; }
   if (t === "soloKins") {
     cfg.kinIds = [...new Set((Array.isArray(c.kinIds) ? c.kinIds : []).map(String))].filter((id) => allKins.some((k) => k.id === id)).slice(0, MAX_SOLO_KINS);
     if (cfg.mode === "host" && T && T.solo) { await syncSoloKins(); await saveTable(); shareState(); }
@@ -593,7 +737,7 @@ async function doCmd(c) {
     if (!myAddr) { note = "This copy has no table address yet; try again in a moment."; return; }
     const name = clean(c.table, 60) || "Kin Hold'em";
     if (explicit(name)) { note = "Table names must stay safe for work."; return; }
-    cfg = { ...cfg, mode: "host", pw: rid(32), prevPw: "", name: clean(c.name, NAME_MAX) || cfg.name || "Host", tableName: name, hostId: cfg.myId, joined: true, pub: null, mine: null };
+    cfg = { ...cfg, mode: "host", pw: rid(32), prevPw: "", name: clean(c.name, NAME_MAX) || cfg.name || PLAYER || "Player", tableName: name, hostId: cfg.myId, joined: true, pub: null, mine: null };
     T = { name, solo: !!c.solo, settings: DEF_SETTINGS(), members: {}, bans: [], seats: [], buttonId: "", handNo: 0, hand: null, deadline: 0, nextDealAt: 0 };
     addSeats(cfg.myId, cfg.name, T.solo ? null : myKin());
     chat = []; ooc = []; await saveChats();
@@ -606,7 +750,7 @@ async function doCmd(c) {
     if (!inv) { note = "That invite code doesn't look right. Copy the whole code from the host."; return; }
     if (!myAddr) { note = "This copy has no table address yet; try again in a moment."; return; }
     if (inv.hostId === cfg.myId || inv.addr === myAddr) { note = "That is this copy's own table. Join from a different Kindroid account."; return; }
-    cfg = { ...cfg, mode: "member", joined: false, joinStage: "sent", joinError: "", pw: inv.key, name: clean(c.name, NAME_MAX) || cfg.name || "Guest", hostAddr: inv.addr, hostId: inv.hostId, tableName: inv.name, pub: null, mine: null };
+    cfg = { ...cfg, mode: "member", joined: false, joinStage: "sent", joinError: "", pw: inv.key, name: clean(c.name, NAME_MAX) || cfg.name || PLAYER || "Guest", hostAddr: inv.addr, hostId: inv.hostId, tableName: inv.name, pub: null, mine: null };
     chat = []; ooc = []; pendingChat = []; pendingOoc = []; await saveChats();
     const k = myKin();
     enqueue(cfg.hostAddr, { t: "join", name: cfg.name, addr: myAddr, kin: k ? { id: k.id, name: k.name } : null });
@@ -628,16 +772,21 @@ async function doCmd(c) {
   if (t === "kinTalkNow") {
     const k = c.kinId ? allKins.find((x) => x.id === String(c.kinId)) : myKin(); if (!k) { note = "Bring a Kin to the table first."; return; }
     if (cfg.mode === "member") { cfg.chatTail = chat.slice(-12).map((m) => `${m.who}: ${m.text}`).join("\n"); }
-    const line = await kinChatLine(k, "Your person asked you to say something to the table.");
-    if (!line) { note = `${k.name} had nothing to say.`; return; }
-    addDraft(k, line, ""); return;
+    typingNow[`t:${k.id}`] = { name: k.name, since: now() }; await writeView();
+    let r; try { r = await kinChatLine(k, "Your person asked you to say something to the table.", { force: true }); } finally { delete typingNow[`t:${k.id}`]; }
+    if (r.err) { note = `${k.name} couldn't reply: ${r.err}`; await reportKinErr(`${k.name} couldn't reply: ${r.err}`); return; }
+    if (!r.text) { note = `${k.name} had nothing to say.`; return; }
+    if (cfg.kinAuto === false) { addDraft(k, r.text, ""); return; }
+    if (cfg.mode === "host") { const sx = T.seats.find((x) => x.kind === "kin" && x.owner === cfg.myId && x.kinId === k.id); await tablePost({ who: k.name, owner: cfg.myId, kind: "kin", text: r.text, seat: sx ? sx.id : "" }); }
+    else if (cfg.joined) enqueue(cfg.hostAddr, { t: "kinSay", lid: rid(6), text: r.text });
+    return;
   }
   // A draft goes to the table only when its owner taps Post.
   if (t === "postDraft" || t === "discardDraft") {
     const d = (cfg.drafts || []).find((x) => x.id === String(c.id)); if (!d) return;
     cfg.drafts = cfg.drafts.filter((x) => x !== d);
     if (t === "discardDraft") { note = "Draft discarded; nobody saw it."; return; }
-    if (cfg.mode === "host") await tablePost({ who: d.name, owner: cfg.myId, kind: "kin", text: d.text });
+    if (cfg.mode === "host") { const sx = T.seats.find((x) => x.kind === "kin" && x.owner === cfg.myId && x.kinId === d.kinId); await tablePost({ who: d.name, owner: cfg.myId, kind: "kin", text: d.text, seat: sx ? sx.id : "" }); }
     else if (cfg.joined) { const lid = rid(6); pendingChat.push({ lid, who: d.name, text: d.text }); enqueue(cfg.hostAddr, { t: "kinSay", lid, text: d.text }); }
     return;
   }
@@ -762,7 +911,7 @@ async function writeView() {
   }
   const v = {
     mode: cfg.mode, joined: !!cfg.joined, joinStage: cfg.joinStage || "", joinError: cfg.joinError || "", me: { id: cfg.myId, name: cfg.name }, note, hasAddress: !!myAddr,
-    kins: allKins, kinId: cfg.kinId, kinIds: cfg.kinIds || [], kinTalk: cfg.kinTalk !== false, drafts: (cfg.drafts || []).map((d) => ({ id: d.id, name: d.name, text: d.text, from: d.from })), table: cfg.mode === "off" ? null : pub, mine, legal,
+    kins: allKins, kinId: cfg.kinId, kinIds: cfg.kinIds || [], kinTalk: cfg.kinTalk !== false, kinAuto: cfg.kinAuto !== false, drafts: (cfg.drafts || []).map((d) => ({ id: d.id, name: d.name, text: d.text, from: d.from })), table: cfg.mode === "off" ? null : pub, mine, legal,
     chat: chat.slice(-CHAT_VIEW), ooc: ooc.slice(-CHAT_VIEW), pendingChat, pendingOoc, online: host ? null : (hostSeen ? now() - hostSeen < ONLINE_MS : null),
     budget: { sentThisHour: budget.hour, sentToday: budget.day, queued: Object.values(outq).reduce((a, q) => a + q.length, 0) }, alive: Math.floor(now() / 20000),
     kinUse: { used: kinUsed(), cap: kinCap() }, asleep: idle(),
@@ -794,7 +943,7 @@ process.on("unhandledRejection", (e) => { note = "Error: " + String((e && e.mess
 async function tick() {
   // A missing lastUse is not "just now": a first run or a self-wake must not look like someone is here.
   await readCmds(); await readInbox();
-  if (cfg.mode === "host") await timeouts();
+  if (cfg.mode === "host") { await drainTalk(); await timeouts(); await drainTalk(); }
   presence(); await flush(false); await writeView();
   if (cfg.mode !== "off") await tellKins(false);
   await saveCfg(); // keeps this hour's Kin request count (written only if it changed)
@@ -813,6 +962,7 @@ function tableSummary() {
 function nextWake() {
   if ((cfg.quietWakes || 0) >= MAX_QUIET_WAKES) return 0; // many self-wakes in a row with nobody using it: the chain ends
   const times = [];
+  if (cfg.mode === "host" && Array.isArray(cfg.talkQ) && cfg.talkQ.length) times.push(now() + 1500); // Kins still waiting to speak
   for (const addr of Object.keys(outq)) if (outq[addr] && outq[addr].length) times.push(Math.max(now() + 1000, (lastSent[addr] || 0) + BASE_GAP, backoff[addr] || 0));
   const sleeping = idle();
   if (cfg.mode === "member" && cfg.joined && !sleeping) times.push((lastSent[cfg.hostAddr] || 0) + hbGap());
@@ -833,6 +983,7 @@ function nextWake() {
   T = (await getJ("table.json")) || null;
   if (T) kept["table.json"] = JSON.stringify(T);
   if (cfg.mode === "host" && !T) cfg.mode = "off";
+  if (!cfg.name || (cfg.name === "Host" && PLAYER && PLAYER !== "Host")) cfg.name = PLAYER || cfg.name; // older copies saved the placeholder "Host"
   if (cfg.mode === "host" && cfg.name) { const s = T.seats.find((x) => x.id === "h:" + cfg.myId); if (s && s.name !== cfg.name) { s.name = cfg.name; await saveTable(); } }
   const rawChat = (await getJ("chat.json")) || [], rawOoc = (await getJ("ooc.json")) || [];
   kept["chat.json"] = JSON.stringify(rawChat); kept["ooc.json"] = JSON.stringify(rawOoc);

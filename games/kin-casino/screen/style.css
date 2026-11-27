@@ -138,3 +138,5 @@ kbd{font:600 10px ui-monospace,monospace;opacity:.6;margin-left:6px;border:1px s
 }
 @media (prefers-reduced-motion:reduce){:root{--dur:0}}
 .nomotion{--dur:0}.nomotion *{animation:none!important}
+
+.msg.typing{opacity:.7;font-style:italic}

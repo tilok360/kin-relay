@@ -22,7 +22,7 @@ const App = (() => {
 
   // ---------- talking to the app (online only) ----------
   function requestWake() { if (wakeBusy && Date.now() - wakeAt < 30000) { wakeAgain = true; return; } wakeBusy = true; wakeAt = Date.now(); parent.postMessage({ kin: "action", name: "wake", input: {} }, "*"); }
-  const send = (c) => { pressAt = Date.now(); parent.postMessage({ kin: "files.write", path: "cmds/" + Date.now() + "-" + Math.random().toString(36).slice(2, 8) + ".json", body: JSON.stringify(c) }, "*"); };
+  const send = (c) => { pressAt = Date.now(); parent.postMessage({ kin: "files.write", path: "cmds/" + Date.now() + "-" + String((window.__krCmd = ((window.__krCmd || 0) + 1) % 1000)).padStart(3, "0") + Math.random().toString(36).slice(2, 5) + ".json", body: JSON.stringify(c) }, "*"); };
   const poll = () => { if (mode !== "solo") parent.postMessage({ kin: "files.read", path: "view.json" }, "*"); };
   function flash(t) { $("note0").textContent = t; $("status").dataset.flash = t; if (mode !== "solo") setTimeout(() => { if ($("status").dataset.flash === t) { $("status").dataset.flash = ""; draw(true); } }, 5000); if (mode !== "menu") draw(true); }
   function copyText(t) {
@@ -203,7 +203,7 @@ const App = (() => {
       const kind = s.kind === "person" ? "person" : s.kind;
       if (rec.avKey !== s.name + kind) { rec.avKey = s.name + kind; rec.av.innerHTML = Art.avatar(s.name, kind); }
       rec.name.textContent = s.name; rec.stack.textContent = money(s.stack);
-      rec.sub.textContent = s.allIn ? "All-in" : s.folded ? "Folded" : s.id === T.toAct ? (s.kind === "person" ? "Thinking…" : "Thinking…") : !s.inHand && !s.stack ? "Out of chips" : s.kind === "kin" ? `${s.ownerName}'s Kin` : s.kind === "bot" ? (Bots.STYLES[s.style] || { label: "CPU" }).label + " · CPU" : isMe ? "You" : !s.inHand && T.street !== "waiting" ? "Next hand" : "";
+      rec.sub.textContent = s.allIn ? "All-in" : s.folded ? "Folded" : s.id === T.toAct ? (s.kind === "person" ? "Thinking…" : "Thinking…") : !s.inHand && !s.stack ? "Out of chips" : s.kind === "kin" ? (s.owner === v.me.id ? "Your Kin" : /^(Host|Player|someone)?$/.test(s.ownerName || "") ? "Kin" : `${s.ownerName}'s Kin`) : s.kind === "bot" ? (Bots.STYLES[s.style] || { label: "CPU" }).label + " · CPU" : isMe ? "You" : !s.inHand && T.street !== "waiting" ? "Next hand" : "";
       rec.tag.replaceChildren(); if (s.id === T.dealer && T.street !== "waiting") rec.tag.append(el("i", "D")); if (s.allIn) rec.tag.append(el("i", "ALL-IN", "a"));
       // hole cards
       const hole = isMe && v.mine ? v.mine.hole : s.shown ? s.shown.hole : null, want = hole ? 2 : s.cards ? 2 : 0;
@@ -356,6 +356,7 @@ const App = (() => {
   const doSend = () => { const t = $("say").value.trim(); if (!t) return; lastUse = Date.now(); send({ t: chan === "ooc" ? "ooc" : "say", text: t }); $("say").value = ""; };
   $("send").onclick = doSend; $("say").onkeydown = (e) => { if (e.key === "Enter") { e.preventDefault(); doSend(); } };
   function drawPanel(v, T, force) {
+    if (!v || !T) return; // a guest who opens the panel before the host's table has arrived
     const solo = v.mode === "solo", tabs = $("ptabs").children;
     if (solo && (chan === "chat" || chan === "ooc")) chan = "log";
     for (const b of tabs) { b.hidden = solo && (b.dataset.t === "chat" || b.dataset.t === "ooc"); b.classList.toggle("on", b.dataset.t === chan); }
@@ -365,8 +366,8 @@ const App = (() => {
     $("unread").hidden = !badge; $("unread").textContent = badge;
     if (!panelOpen) return;
     $("sayRow").hidden = !(chan === "chat" || chan === "ooc") || (v.mode === "member" && !v.joined);
-    $("say").placeholder = chan === "ooc" ? "Out of character: people only, never a Kin" : "Say something to the table (@Name talks to a Kin)";
-    const box = $("pBody"), atEnd = box.scrollTop + box.clientHeight >= box.scrollHeight - 30, key = JSON.stringify([chan, v.chat.length && v.chat[v.chat.length - 1].id, v.ooc.length && v.ooc[v.ooc.length - 1].id, (v.pendingChat || []).length, (v.pendingOoc || []).length, T.log.length, T.log[T.log.length - 1], T.handNo, JSON.stringify(T.ach).length]);
+    $("say").placeholder = chan === "ooc" ? "Out of character: people only, never a Kin" : "Say something to the table. The Kins join in; @Name talks to one";
+    const box = $("pBody"), atEnd = box.scrollTop + box.clientHeight >= box.scrollHeight - 30, key = JSON.stringify([chan, v.chat.length && v.chat[v.chat.length - 1].id, v.ooc.length && v.ooc[v.ooc.length - 1].id, (v.pendingChat || []).length, (v.pendingOoc || []).length, typingNow(T).map((t) => t.name + (t.slow ? "!" : "")).join("|"), T.log.length, T.log[T.log.length - 1], T.handNo, JSON.stringify(T.ach).length]);
     if (key === box.dataset.key && !force) return; box.dataset.key = key; box.replaceChildren();
     if (chan === "log") { let h = ""; for (const l of T.log) { const d = el("div", l, "logline" + (/^(Flop|Turn|River)/.test(l) ? " h" : "")); box.append(d); } if (!T.log.length) box.append(el("div", "Nothing yet.", "note")); }
     else if (chan === "ach") renderAch(box, T);
@@ -375,9 +376,11 @@ const App = (() => {
       if (chan === "ooc") box.append(el("div", "Out-of-character chat for the people at the table. The Kins never see it.", "msg dealer"));
       list.forEach((m) => { const d = el("div", null, "msg " + (chan === "ooc" ? "ooc " : "") + (m.kind === "kin" ? "kin " : "") + (m.kind === "dealer" ? "dealer " : "") + (m.owner === v.me.id && m.kind === "person" ? "mine-m" : "")); d.append(el("div", m.text, "b")); if (m.kind !== "dealer") d.append(el("div", m.who + (m.kind === "kin" ? " (Kin)" : ""), "w")); box.append(d); });
       pend.forEach((m) => { const d = el("div", null, "msg wait mine-m"); d.append(el("div", m.text, "b"), el("div", m.who + " · sending…", "w")); box.append(d); });
+      if (chan === "chat") for (const t of typingNow(T)) { const d = el("div", null, "msg kin typing"); d.append(el("div", t.slow ? `${t.name} is typing… (waiting for Kindroid's limit of 10 requests per 30 seconds)` : `${t.name} is typing…`, "b")); box.append(d); }
     }
     if (atEnd || force) box.scrollTop = box.scrollHeight;
   }
+  const typingNow = (T) => (T && Array.isArray(T.typing) ? T.typing : []).map((t) => ({ name: String(t.name || "A Kin"), slow: Date.now() - (Number(t.since) || Date.now()) > 12000 }));
   function renderAch(box, T) {
     const book = (T && T.ach) || {}, g = el("div", null, "achs"); let total = 0;
     for (const a of Poker.ACH) {
@@ -422,14 +425,15 @@ const App = (() => {
     const kb = $("kinBox"); kb.replaceChildren();
     const mine = T.seats.filter((s) => s.owner === v.me.id && s.kind === "kin");
     if (mine.length) {
-      for (const s of mine) kb.append(btn(`Draft a line from ${s.name}`, () => { send({ t: "kinTalkNow", kinId: s.kinId }); flash(`Asking ${s.name} for a line…`); }));
-      kb.append(btn(v.kinTalk ? "Drafts replies to @mentions: on" : "Drafts replies to @mentions: off", () => send({ t: "kinTalk", on: !v.kinTalk })));
+      for (const s of mine) kb.append(btn(`Ask ${s.name} to say something`, () => { send({ t: "kinTalkNow", kinId: s.kinId }); flash(`Asking ${s.name} for a line…`); }));
+      kb.append(btn(v.kinTalk ? "My Kins join the chat: on" : "My Kins join the chat: off", () => send({ t: "kinTalk", on: !v.kinTalk })));
+      kb.append(btn(v.kinAuto === false ? "Kin lines wait for my OK: on" : "Kin lines wait for my OK: off", () => send({ t: "kinAuto", on: v.kinAuto === false })));
       for (const d of v.drafts || []) { const r = el("div", null, "row"); r.style.width = "100%"; r.append(el("span", `Draft only you can see: ${d.name}${d.from ? ` (to ${d.from})` : ""}: ${d.text}`, "grow"), btn("Post", () => { send({ t: "postDraft", id: d.id }); flash("Posting…"); }), btn("Discard", () => send({ t: "discardDraft", id: d.id }))); kb.append(r); }
       const ku = v.kinUse || { used: 0, cap: 60 }; kb.append(el("span", "Most Kin requests per hour:", "note"));
       for (const n of [30, 60, 120, 240, 480]) kb.append(btn(n === ku.cap ? `${n} ✓` : String(n), () => send({ t: "kinCap", n })));
     }
     const ku = v.kinUse || { used: 0, cap: 60 };
-    $("creditNote").textContent = `Computer players are free. Hosting and joining run this app on Kindroid to carry moves, chat and check-ins, and that may use Kindroid credits; it stops checking in 10 minutes after the last person used the table. Each Kin move or line is a Kin request on your account (used this hour: ${ku.used} of ${ku.cap}). Solo play from the menu is always free.`;
+    $("creditNote").textContent = `Computer players are free. Hosting and joining run on this device, and the table stops checking in 10 minutes after the last person used it. Each Kin move or chat line is a normal Kin message through your Kindroid API key (used this hour: ${ku.used} of ${ku.cap}); Kindroid allows about 10 requests per 30 seconds, so a busy table may make a Kin wait. Solo play from the menu is always free.`;
     if (host && v.host) {
       $("invite").textContent = v.host.invite; $("pauseBtn").textContent = T.settings.paused ? "Resume the table" : "Pause after this hand";
       $("hostTools").querySelectorAll(".guests").forEach((g) => (g.hidden = kinSolo));
@@ -482,6 +486,7 @@ const App = (() => {
   Solo.onChange = () => { if (mode === "solo") { SV = Solo.view(); draw(); } };
   $("sprite").innerHTML = Art.sprite;
   $("myname").value = store.get("name", "");
+  if (window.KRKins) KRKins.onChange(() => { const n = KRKins.player && KRKins.player(); if (n && !$("myname").value.trim()) $("myname").value = n; }); // your name from Kin Relay Settings (or your Kindroid export)
   buildMenu(); setTab("tSolo"); fit(); $("bSnd").setAttribute("aria-pressed", String(Sfx.on));
   poll(); checkAlive();
   setInterval(() => { poll(); checkAlive(); nudge(); }, 2000);

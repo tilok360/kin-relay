@@ -19,10 +19,13 @@ const App = (() => {
     const id = "m" + ++seq; msg.id = id;
     return new Promise((res) => { waiting[id] = res; parent.postMessage(msg, "*"); setTimeout(() => { if (waiting[id]) { delete waiting[id]; res(null); } }, ms || 10000); });
   }
-  const ask = async (q) => { const m = await post({ kin: "ask", question: q.slice(0, 7900) }, 30000); return m && m.ok && m.text ? String(m.text) : null; };
+  // A Kin may have to wait for Kindroid's limit (10 requests per 30 seconds) and then for its answer, so this waits up to 110 s;
+  // when it fails, askErr says why (no key, wrong key, offline ...) so the person is told, never left guessing.
+  let askErr = "";
+  const ask = async (q) => { askErr = ""; const m = await post({ kin: "ask", question: q.slice(0, 7900) }, 110000); if (m && m.ok && m.text) return String(m.text); askErr = (m && m.error) || "Kin Relay didn't get an answer."; return null; };
   let wakeBusy = false, wakeAgain = false, wakeAt = 0, pressAt = 0, startAt = 0, lastBody = "", lastChange = 0, loadAt = Date.now(), lastUse = Date.now(), lastNudge = 0;
   function requestWake() { if (wakeBusy && Date.now() - wakeAt < 30000) { wakeAgain = true; return; } wakeBusy = true; wakeAt = Date.now(); parent.postMessage({ kin: "action", name: "wake", input: {} }, "*"); }
-  const cmd = (c) => { pressAt = Date.now(); parent.postMessage({ kin: "files.write", path: "cmds/" + Date.now() + "-" + Math.random().toString(36).slice(2, 8) + ".json", body: JSON.stringify(c) }, "*"); };
+  const cmd = (c) => { pressAt = Date.now(); parent.postMessage({ kin: "files.write", path: "cmds/" + Date.now() + "-" + String((window.__krCmd = ((window.__krCmd || 0) + 1) % 1000)).padStart(3, "0") + Math.random().toString(36).slice(2, 5) + ".json", body: JSON.stringify(c) }, "*"); };
   const poll = () => { if (mode !== "solo") parent.postMessage({ kin: "files.read", path: "view.json" }, "*"); };
 
   // ---------- state ----------
@@ -100,6 +103,7 @@ const App = (() => {
         intro = { style: j && Games.styles[j.style] ? j.style : "steady", lucky: j && j.lucky >= 0 && j.lucky <= 36 ? Math.round(j.lucky) : 7 };
         bank.intros[k.id] = intro; saveBank();
         if (j && j.line) S.chat.push({ who: k.name, kind: "kin", text: String(j.line).slice(0, 200) });
+        else if (askErr) S.chat.push({ who: "Dealer", kind: "dealer", text: `${k.name} couldn't sit down with a hello: ${askErr}` });
       }
       Table.addSeat(T, { id: "k:kin", name: k.name, kind: "kin", style: intro.style, lucky: intro.lucky, stack: bank.kins[k.id] || 1000 });
       S.kin = Object.assign({ id: k.id, name: k.name }, intro);
@@ -324,6 +328,8 @@ const App = (() => {
   function drawPanel() {
     const list = mode === "solo" ? S.chat : (V.chat || []).concat((V.pendingChat || []).map((m) => ({ who: m.who, text: m.text, kind: "pending" })));
     const box = $("pBody"); box.replaceChildren(...list.slice(-80).map((m) => { const d = el("div", null, "msg " + m.kind); d.append(el("b", m.who), el("span", m.text)); return d; }));
+    const typers = mode === "solo" ? (S.typing ? [{ name: S.typing, since: Date.now() }] : []) : ((V && V.table && V.table.typing) || []);
+    for (const t of typers) { const d = el("div", null, "msg kin typing"); d.append(el("b", t.name), el("span", Date.now() - (Number(t.since) || Date.now()) > 12000 ? "is typing… (waiting for Kindroid's limit of 10 requests per 30 seconds)" : "is typing…")); box.append(d); }
     box.scrollTop = 1e6;
     const D = $("drafts"); D.replaceChildren();
     if (mode === "online") for (const d of V.drafts || []) {
@@ -336,8 +342,10 @@ const App = (() => {
   }
   async function kinLine(why) {
     const k = S.kin, T = S.T, me = Table.find(T, "k:kin"), last = T.round.last;
+    S.typing = k.name; drawPanel();
     const t = await ask(`You're at ${G(T.game).name} in Kin Casino with your person, for play chips only (no real money). You have ${me ? me.stack : 0} chips (${me && me.net >= 0 ? "up " + me.net : "down " + (me ? -me.net : 0)} this session). ${last ? "Last round: " + outcome(G(T.game), last) + "." : ""} Recent chat:\n${S.chat.slice(-8).map((m) => `${m.who}: <<<${m.text.replace(/<<<|>>>/g, "")}>>>`).join("\n") || "(quiet)"}\n${why} Reply with one short chat line in your own voice (under 160 characters), safe for work.`);
-    if (t) S.chat.push({ who: k.name, kind: "kin", text: t.replace(/^["“]|["”]$/g, "").slice(0, 200) }); else S.chat.push({ who: "Dealer", kind: "dealer", text: `${k.name} didn't answer just now.` });
+    S.typing = "";
+    if (t) S.chat.push({ who: k.name, kind: "kin", text: t.replace(/^["“]|["”]$/g, "").slice(0, 200) }); else S.chat.push({ who: "Dealer", kind: "dealer", text: `${k.name} couldn't reply: ${askErr || "no answer"}` });
     drawPanel();
   }
   $("talk").onclick = () => { lastUse = Date.now(); if (mode === "solo") { if (S.kin) kinLine("Your person asked you to say something."); } else { cmd({ t: "kinTalkNow" }); flash("Asking your Kin for a line (you review it before it's posted)…"); } };
@@ -373,10 +381,11 @@ const App = (() => {
     } else H.append(el("p", V.joined ? (V.online === false ? "The host's table hasn't been heard from in a while." : "You're seated at the host's table.") : V.joinError || "Waiting for the host to let you sit down…", "note"));
     K.append(el("h2", "Your Kin at this table"));
     const row = el("div", null, "row kinpick"); kinRow(row, V.kinId || "", (id) => { cmd({ t: "bring", kinId: id }); flash(id ? "Seating your Kin…" : "Standing your Kin up…"); }, true); K.append(row);
-    K.append(el("p", "Your Kin is asked once when it sits down (style, lucky number, hello). Its bets after that are free. Its chat lines are drafts only you see until you tap Post.", "note"));
+    K.append(el("p", "Your Kin is asked once when it sits down (style, lucky number, hello). Its bets after that are free. Its chat lines go straight to the table (you can turn that off below).", "note"));
     const cap = el("div", null, "seg"); [10, 20, 40, 80].forEach((n) => cap.append(btn(String(n), () => cmd({ t: "kinCap", n }), V.kinUse.cap === n ? "on" : "")));
     const o3 = el("div", null, "opt"); o3.append(el("span", "Most Kin requests per hour"), cap); K.append(o3);
-    const tk = el("label", null, "chk"), cb = el("input"); cb.type = "checkbox"; cb.checked = V.kinTalk; cb.onchange = () => cmd({ t: "kinTalk", on: cb.checked }); tk.append(cb, " Let my Kin draft replies when someone @mentions it"); K.append(tk);
+    const tk = el("label", null, "chk"), cb = el("input"); cb.type = "checkbox"; cb.checked = V.kinTalk; cb.onchange = () => cmd({ t: "kinTalk", on: cb.checked }); tk.append(cb, " Let my Kin join the chat"); K.append(tk);
+    const ta = el("label", null, "chk"), cb2 = el("input"); cb2.type = "checkbox"; cb2.checked = V.kinAuto !== false; cb2.onchange = () => cmd({ t: "kinAuto", on: cb2.checked }); ta.append(cb2, " Post my Kin's lines to the table without asking me first"); K.append(ta);
   }
   $("sSound").onchange = () => { Sfx.on = $("sSound").checked; $("bSnd").setAttribute("aria-pressed", String(Sfx.on)); };
   $("sMotion").onchange = () => { prefs.motion = $("sMotion").checked; store.set("prefs", prefs); document.body.classList.toggle("nomotion", !animOn()); };
@@ -446,6 +455,7 @@ const App = (() => {
   Stage.mount($("show"));
   $("sprite").innerHTML = Art.sprite;
   $("myname").value = store.get("name", "");
+  if (window.KRKins) KRKins.onChange(() => { const n = KRKins.player && KRKins.player(); if (n && !$("myname").value.trim()) $("myname").value = n; }); // your name from Kin Relay Settings (or your Kindroid export)
   bank = Object.assign(bank, store.get("bank", {}));
   post({ kin: "files.read", path: "bank.json" }).then((m) => { try { const b = m && m.body && JSON.parse(m.body); if (b && typeof b.me === "number") { bank = Object.assign({ kins: {}, intros: {} }, b); buildLounge(); } } catch {} });
   parent.postMessage({ kin: "kins" }, "*");

@@ -50,6 +50,14 @@ PICKING A KIN INSIDE A GAME
    API key as a normal Kin message, not Kindroid Apps credits. Kin Relay can't see whether Kindroid counts API
    messages against your account, so check your account after a first session.
 
+TABLE CHAT
+   At a Hold'em or Casino table, anyone's chat line can get a reply from a Kin. Whoever you speak to (@Name, or
+   "Name, ..." at the start) answers first, otherwise the Kin that has been quiet longest, and a reply can start one
+   more reply: never more than 3 Kin lines in a row without a person speaking. Kin Relay waits out Kindroid's limit
+   (10 requests per 30 seconds) while "X is typing..." shows. Each Kin speaks through its owner's key on the
+   owner's PC. If a Kin can't answer (no key, wrong key, offline) the chat says so. OOC is people only. Your name at
+   tables comes from Settings, or from the persona in your Kindroid export when you import it.
+
 IMPORT AND EXPORT KINS
    Characters > Import reads Kindroid's data export (.jsonl), a Kin Relay file or a Kin Studio character file.
    Chats in the file are ignored. Tick the Kins you want; for ones you already have, choose Update or Skip.

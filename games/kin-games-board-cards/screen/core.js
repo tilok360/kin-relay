@@ -5,7 +5,7 @@
 (function () {
   "use strict";
   const Q = new URLSearchParams(location.search);
-  const ASK_MS = (Number(Q.get("asktimeout")) || 30) * 1000;
+  const ASK_MS = (Number(Q.get("asktimeout")) || 90) * 1000; // a Kin may first wait for Kindroid's limit (10 requests per 30 seconds)
   const $ = (id) => document.getElementById(id);
   const K = window.Kit, CAT = window.KG_CATALOG, SFX = K.sfx, el = K.el;
   const KG = (window.KG = { games: [], add(g) { const c = CAT.GAMES.find((x) => x.id === g.id) || {}; const m = Object.assign({}, g, { title: c.title || g.title, blurb: c.blurb || g.blurb, cat: c.cat, kin: c.kin }); const i = this.games.findIndex((x) => x.id === g.id); if (i >= 0) this.games[i] = m; else this.games.push(m); } });
@@ -18,7 +18,10 @@
   }
   const read = async (p) => { const m = await send({ kin: "files.read", path: p }); try { return m && m.body ? JSON.parse(m.body) : null; } catch { return null; } };
   const write = (p, o) => send({ kin: "files.write", path: p, body: JSON.stringify(o) });
-  const ask = async (q) => { const m = await send({ kin: "ask", question: q.slice(0, 7900), kinId: current ? current.id : undefined }, ASK_MS); return m && m.ok && m.text ? String(m.text) : null; };
+  const ask = async (q) => { const m = await send({ kin: "ask", question: q.slice(0, 7900), kinId: current ? current.id : undefined }, ASK_MS); if (m && m.ok && m.text) return String(m.text);
+    const why = `${current ? current.name : "Your Kin"} couldn't answer: ${(m && m.error) || "Kin Relay didn't get an answer in time."}`; // never silent: say why (no key, wrong key, offline ...)
+    status(why); setTimeout(() => { if ($("status").textContent === why) status(""); }, 9000);
+    return null; };
   KG.read = read; KG.write = write;
 
   let kins = [], current = null, fromChat = false;

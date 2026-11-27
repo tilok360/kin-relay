@@ -21,7 +21,7 @@ const { RelayLink } = require("./lib/relay-link");
 const I = require("./lib/installer");
 const IO = require("./public/chario.js");
 
-const VERSION = "1.2.1";
+const VERSION = "1.2.2";
 // Games you add go to APPS_DIR: the games/ folder next to this file when run from the zip, or your data folder in the
 // Windows app (its program folder is replaced on every update). Games that come with the Windows app are read from
 // BUILTIN_DIR; one you add with the same name takes its place.
@@ -74,7 +74,7 @@ function envFor(slug) {
   const current = g.current;
   const addrs = {};
   if (s.relay && apps.get(slug).inbound.length) for (const [id, sec] of Object.entries(relaySecrets(slug))) addrs[id] = A.make(s.relay, boxOf(sec));
-  return { kins, current, addrs };
+  return { kins, current, addrs, player: s.name || "" };
 }
 
 // ---------- runs ----------
@@ -345,6 +345,7 @@ async function fetchAvatar(u) {
 async function importCharacters(b) {
   const items = Array.isArray(b.items) ? b.items.slice(0, 60) : [];
   const s = S.settings(), res = { added: 0, updated: 0, skipped: 0, pictures: 0, problems: [] };
+  if (!s.name && typeof b.userName === "string" && b.userName.trim()) s.name = b.userName.replace(/[\u0000-\u001f]/g, "").trim().slice(0, 40); // the persona name in a Kindroid export becomes your name at tables
   for (const it of items) {
     if (!it || typeof it !== "object") continue;
     const ai = S.cleanAiId(it.ai_id), problem = S.aiIdProblem(ai);

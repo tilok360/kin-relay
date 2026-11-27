@@ -154,3 +154,5 @@ button.fold{background:linear-gradient(#7a3030,#4e1c1c);border-color:#d36a6a88}b
 }
 @media (prefers-reduced-motion:reduce){:root{--dur:0}.seat.turn .plate{animation:none}}
 .nomotion{--dur:0}.nomotion .seat.turn .plate{animation:none}
+
+.msg.typing .b{opacity:.75;font-style:italic}

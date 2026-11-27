@@ -294,7 +294,7 @@
     try {
       for (let i = 0; i < chosen.length; i += 8) {
         const items = chosen.slice(i, i + 8).map((r) => ({ ai_id: r.ai, name: r.k.name, share_code: r.k.share_code, notes: r.k.notes || "", details: r.k.details, avatar: r.k.avatar || "", avatar_url: r.k.avatar_url || "", action: r.dup ? "update" : "add" }));
-        const x = await api("/api/import", { items });
+        const x = await api("/api/import", { items, userName: (imp && imp.result && imp.result.userName) || "" });
         if (!x.ok) throw new Error(x.error || "The import failed.");
         for (const k of ["added", "updated", "skipped", "pictures"]) total[k] += x[k]; total.problems.push(...x.problems); state = x.state;
         msg("impMsg", `Imported ${Math.min(i + 8, chosen.length)} of ${chosen.length}…`, null);

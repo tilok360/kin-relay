@@ -24,7 +24,7 @@
   // Kindroid sends the Kins attached to the app; here, the characters you chose for this game (all of them unless you chose).
   // Each Kin may carry a small picture (a data URL, made here from the character's picture) so a game can show it.
   const thumbs = new Map(); // cid -> data URL ("" when it can't be made)
-  const kinsMsg = () => ({ kin: "kins", ok: true, kins: gameKins().map((k) => ({ id: k.id, name: k.name, avatar: thumbs.get(k.cid) || undefined })), current: game().current || undefined });
+  const kinsMsg = () => ({ kin: "kins", ok: true, kins: gameKins().map((k) => ({ id: k.id, name: k.name, avatar: thumbs.get(k.cid) || undefined })), current: game().current || undefined, player: state.settings.name || "" });
   function makeThumb(k) {
     return new Promise((resolve) => {
       const i = new Image(); i.onload = () => { try { const c = document.createElement("canvas"); c.width = c.height = 48; const s = Math.min(i.naturalWidth, i.naturalHeight), x = c.getContext("2d"); x.drawImage(i, (i.naturalWidth - s) / 2, (i.naturalHeight - s) / 2, s, s, 0, 0, 48, 48); resolve(c.toDataURL("image/jpeg", 0.7)); } catch { resolve(""); } }; i.onerror = () => resolve("");

@@ -44,7 +44,7 @@
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", watch); else watch();
 
   // ---------- 2. the saved Kins ----------
-  let kins = [], cbs = [];
+  let kins = [], cbs = [], player = "";
   const style = document.createElement("style");
   style.textContent = ".krk-av{width:22px;height:22px;border-radius:50%;object-fit:cover;vertical-align:middle;margin:-3px 6px -3px -4px;background:#ffffff22}" +
     ".krk-ini{display:inline-flex;width:22px;height:22px;border-radius:50%;align-items:center;justify-content:center;font-size:12px;font-weight:700;margin:-3px 6px -3px -4px;background:#ffffff2e;color:inherit;vertical-align:middle}" +
@@ -97,10 +97,11 @@
     }
     enhance(box, list.map((k) => k.id));
   }
-  window.KRKins = { list: () => kins.slice(), get: byId, enhance, chooser, onChange: (f) => { cbs.push(f); if (kins.length) setTimeout(() => { try { f(kins); } catch {} }, 0); } }; // a late listener is told about the list that already came
+  window.KRKins = { player: () => player, list: () => kins.slice(), get: byId, enhance, chooser, onChange: (f) => { cbs.push(f); if (kins.length) setTimeout(() => { try { f(kins); } catch {} }, 0); } }; // a late listener is told about the list that already came
   window.addEventListener("message", (e) => {
     const d = e.data; if (!d || d.kin !== "kins" || e.source !== parent) return;
     kins = Array.isArray(d.kins) ? d.kins.filter((k) => k && k.id).map((k) => ({ id: String(k.id), name: String(k.name || "Kin").slice(0, 40), avatar: typeof k.avatar === "string" && k.avatar.startsWith("data:image/") ? k.avatar : "" })) : [];
+    player = typeof d.player === "string" ? d.player.slice(0, 40) : player;
     for (const f of cbs) { try { f(kins); } catch {} }
   });
   try { parent.postMessage({ kin: "kins" }, "*"); } catch {}

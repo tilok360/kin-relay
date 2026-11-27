@@ -167,7 +167,7 @@ var rf=window.fetch;window.fetch=function(u){var k=typeof u==="string"?key(u):nu
   async function envFor(slug) {
     const g = S.gameKins(cfg, slug), addrs = {};
     if (cfg.relay && apps.get(slug).inbound.length) for (const [id, sec] of Object.entries(await relaySecrets(slug))) addrs[id] = A.make(cfg.relay, boxOf(sec));
-    return { kins: g.kins.map((k) => ({ id: k.id, name: k.name })), current: g.current, addrs };
+    return { kins: g.kins.map((k) => ({ id: k.id, name: k.name })), current: g.current, addrs, player: cfg.name || "" };
   }
   class WebRunner {
     constructor(app) { this.app = app; this.chain = Promise.resolve(); this.bgQueued = false; this.wakeTimer = null; this.active = null; }
@@ -181,7 +181,7 @@ var rf=window.fetch;window.fetch=function(u){var k=typeof u==="string"?key(u):nu
       if (parts[0] !== "node") return { ok: false, summary: `Kin Relay can run "node ..." entries only (this app says "${manifest.run.entry}").` };
       const [files, dataFiles, tells, e] = await Promise.all([appFiles(this.app), filesAll(slug), kvGet("tells:" + slug), envFor(slug)]);
       const job = { t: "job", slug, entry: parts[1] || "main.js", appFiles: files, dataFiles, tells: tells == null ? null : tells, trigger: trig,
-        env: { KGR_KINS: JSON.stringify(e.kins), KGR_ADDRS: JSON.stringify(e.addrs), KGR_CURRENT_KIN: e.current || "", KGR_SLUG: slug }, timeoutMs: Math.min(ms(manifest.run.timeout), 150000) };
+        env: { KGR_KINS: JSON.stringify(e.kins), KGR_ADDRS: JSON.stringify(e.addrs), KGR_CURRENT_KIN: e.current || "", KGR_PLAYER: e.player || "", KGR_SLUG: slug }, timeoutMs: Math.min(ms(manifest.run.timeout), 150000) };
       return new Promise((resolve) => {
         let writes = Promise.resolve(), finished = false;
         const w = new Worker("worker.js"); this.active = w;
@@ -271,6 +271,7 @@ var rf=window.fetch;window.fetch=function(u){var k=typeof u==="string"?key(u):nu
   }
   async function importCharacters(b) {
     const items = Array.isArray(b.items) ? b.items.slice(0, 60) : [], res = { added: 0, updated: 0, skipped: 0, pictures: 0, problems: [] };
+    if (!cfg.name && typeof b.userName === "string" && b.userName.trim()) cfg.name = b.userName.replace(/[\u0000-\u001f]/g, "").trim().slice(0, 40);
     for (const it of items) {
       if (!it || typeof it !== "object") continue;
       const ai = S.cleanAiId(it.ai_id), problem = S.aiIdProblem(ai);
