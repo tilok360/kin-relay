@@ -1,0 +1,43 @@
+{
+  "kin": 1,
+  "name": "Kin Casino",
+  "purpose": "13 casino games for play chips: Solo vs the house is free on screen. Play with your Kin, or host friends at a table (uses Kindroid credits). Nothing to buy.",
+  "triggers": [
+    {
+      "on": "inbound",
+      "via": "webhook",
+      "id": "table"
+    }
+  ],
+  "run": {
+    "entry": "node main.js",
+    "timeout": "5m"
+  },
+  "screens": [
+    {
+      "slot": "panel",
+      "entry": "screen/index.html",
+      "title": "Casino"
+    }
+  ],
+  "actions": [
+    {
+      "name": "wake",
+      "description": "Open Kin Casino and see how the casino table stands: the game, chips and whose turn it is. Use when the person wants to play casino games or asks how the table is going.",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "by": [
+        "user",
+        "kin"
+      ],
+      "reply": true
+    }
+  ],
+  "grants": [
+    "kin:read",
+    "inbound:table",
+    "net:in.kinusercontent.com"
+  ]
+}

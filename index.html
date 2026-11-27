@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="room-token" content="web">
+<title>Kin Relay</title>
+<link rel="icon" href="art/logo.svg">
+<link rel="stylesheet" href="room.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0f0a1c">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Kin Relay"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+</head>
+<body>
+<header class="top">
+  <img src="art/logo.svg" alt="">
+  <h1>Kin Relay <small>Your Kindroid games, on your own device</small></h1>
+  <nav class="tabs" role="tablist" aria-label="Kin Relay">
+    <a role="tab" href="#games" id="tab-games">Games</a>
+    <a role="tab" href="#characters" id="tab-characters">Characters</a>
+    <a role="tab" href="#settings" id="tab-settings">Settings</a>
+  </nav>
+  <div class="grow"></div>
+  <a class="pill" href="#settings" title="Kindroid API key"><span class="dot" id="keyDot"></span><span id="keyTxt">No key yet</span></a>
+  <a class="pill hide-s" href="#settings" title="Kin Relay, for tables with other people"><span class="dot" id="relayDot"></span><span id="relayTxt">No relay</span></a>
+</header>
+
+<main class="lobby">
+  <!-- ================= Welcome (first run) ================= -->
+  <section class="view" id="view-welcome" hidden aria-labelledby="wH">
+    <div class="welcome">
+      <img class="wlogo" src="art/logo.svg" alt="">
+      <h2 id="wH">Welcome to Kin Relay</h2>
+      <p class="lead">Play your Kindroid games here on your device, free of Kindroid Apps credits. Solo games are ready now, no setup needed. To play with your Kin, do these two steps once.</p>
+      <ol class="steps">
+        <li class="step" id="wStepKey">
+          <span class="num">1</span>
+          <div><h3>Add your Kindroid API key</h3><p>Paste it in Settings and press <b>Test</b>. It stays on this device only.</p></div>
+          <a class="primary btn" href="#settings" id="wGoKey">Open Settings</a>
+        </li>
+        <li class="step" id="wStepKin">
+          <span class="num">2</span>
+          <div><h3>Add your Kin</h3><p>On Characters, add your Kin's name and AI ID (from the bottom of the Kin's settings in Kindroid).</p></div>
+          <a class="primary btn" href="#characters" id="wGoKin">Open Characters</a>
+        </li>
+        <li class="step done">
+          <span class="num">✓</span>
+          <div><h3>Solo games</h3><p>Ready now. They work offline.</p></div>
+          <a class="ghost btn" href="#games" id="wGoGames">Play solo now</a>
+        </li>
+      </ol>
+      <button class="ghost" id="wDone">I'm done. Show my games</button>
+    </div>
+  </section>
+
+  <!-- ================= Games ================= -->
+  <section class="view" id="view-games" hidden>
+    <section class="hero">
+      <div class="box">
+        <h2>Play here without spending Kindroid Apps credits</h2>
+        <p>Every game here runs on this device. Nothing here starts an app run on Kindroid.</p>
+        <div class="facts">
+          <div class="fact"><span class="tag free">Free</span><span><b>Solo</b> against the computer works fully offline.</span></div>
+          <div class="fact"><span class="tag kin">Your Kin</span><span><b>Play with my Kin</b> sends your Kin ordinary messages through Kindroid's API with your own key. That's normal chatting, not Apps credits.</span></div>
+          <div class="fact"><span class="tag tables">Tables</span><span><b>Friends</b> join through a free Kin Relay. Each person's Kin uses that person's own key on their own device.</span></div>
+        </div>
+      </div>
+      <div class="box">
+        <h2 id="helloName">Welcome</h2>
+        <div class="facts" id="checklist"></div>
+      </div>
+    </section>
+    <div class="secthead"><h3 class="sect">Games</h3><button class="primary" id="addGame">+ Add a game</button><input type="file" id="pickFile" accept=".gz,.tgz,.tar,.zip,application/gzip,application/zip" hidden></div>
+    <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Add a game: choose or drop a Get its code file">
+      <strong>Tap here to add a Kindroid app</strong>
+      <span>In Kindroid, open the app's menu and tap <b>Get its code</b>. Then choose the .gz file it downloads. Nothing in it runs while it's added.</span>
+    </div>
+    <div class="grid" id="games"></div>
+  </section>
+
+  <!-- ================= Characters ================= -->
+  <section class="view" id="view-characters" hidden aria-labelledby="cH">
+    <div class="secthead"><h2 class="pageh" id="cH">Characters</h2>
+      <button class="ghost" id="importChars" title="Bring in Kins from a Kindroid data export, a Kin Relay file or a Kin Studio file">Import</button>
+      <button class="ghost" id="exportChars" title="Save your Kins to a file">Export</button>
+      <button class="primary" id="newChar">+ Add a Kin</button>
+      <input type="file" id="importFile" accept=".jsonl,.json,.txt,application/json,application/x-ndjson,text/plain" hidden></div>
+    <p class="hint">Your Kins, kept on this device. Games ask a Kin through Kindroid's API with your key and that Kin's AI ID. Pick which Kins play each game from the game's top bar.</p>
+    <div class="chars">
+      <div class="charlist" id="charList" aria-label="Your characters"></div>
+      <form class="panel editor" id="charForm" novalidate aria-labelledby="edH">
+        <h4 id="edH">Add a Kin</h4>
+        <input type="hidden" id="cCid">
+        <div class="avrow">
+          <div class="avatar big" id="cAvPrev" aria-hidden="true"></div>
+          <div class="avbtns">
+            <button type="button" class="ghost" id="cPhoto">Add a picture</button>
+            <button type="button" class="ghost danger" id="cPhotoClear" hidden>Remove picture</button>
+            <span class="hint">Optional. Shown here and in the game bar. It stays on this device.</span>
+          </div>
+          <input type="file" id="cPhotoFile" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
+        </div>
+        <label for="cName">Name</label>
+        <input id="cName" maxlength="40" placeholder="Your Kin's name" autocomplete="off">
+        <label for="cAiId">Kindroid AI ID</label>
+        <input id="cAiId" maxlength="200" placeholder="Paste the AI ID" spellcheck="false" autocomplete="off">
+        <p class="hint">In Kindroid: open the Kin, then Kin settings. The AI ID is at the very bottom. It's not the 5-letter share code.</p>
+        <label for="cNotes">Notes <span class="opt">(optional, only for you)</span></label>
+        <textarea id="cNotes" rows="3" maxlength="1000" placeholder="Anything you want to remember about this Kin"></textarea>
+        <details class="acc"><summary>Share code <span class="opt">(optional, for quiet asking)</span></summary>
+          <label for="cShare">Share code</label>
+          <input id="cShare" maxlength="12" placeholder="5 letters" spellcheck="false" autocomplete="off">
+          <p class="hint">Only used if Settings → "How your Kin is asked" is set to Quietly.</p>
+        </details>
+        <details class="acc" id="cDetailsBox"><summary>Profile details <span class="opt">(optional, kept for reference)</span></summary>
+          <p class="hint">Backstory, memories and the like, as in Kindroid. They're only stored here and in files you export. Nothing sends them anywhere.</p>
+          <div id="cDetails"></div>
+        </details>
+        <div class="msg" id="charMsg" role="status" aria-live="polite"></div>
+        <div class="row">
+          <button type="submit" class="primary" id="cSave">Save Kin</button>
+          <button type="button" class="ghost" id="cCancel">New</button>
+          <div class="grow"></div>
+          <button type="button" class="ghost danger" id="cDelete" hidden>Delete</button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <!-- ================= Settings ================= -->
+  <section class="view" id="view-settings" hidden aria-labelledby="sH">
+    <h2 class="pageh" id="sH">Settings</h2>
+    <div class="setgrid">
+      <section class="panel" aria-labelledby="hKey">
+        <h4 id="hKey">Kindroid API key</h4>
+        <p class="hint">In Kindroid: Profile → Preferences → API &amp; Integrations → reveal your API key. It starts with <b>kn_</b>.</p>
+        <div class="keystate" id="keyState"></div>
+        <label for="apiKey">API key</label>
+        <div class="row">
+          <input id="apiKey" class="grow" type="password" autocomplete="off" spellcheck="false" placeholder="kn_…">
+          <button type="button" class="ghost" id="showKey" aria-pressed="false" aria-controls="apiKey">Show</button>
+        </div>
+        <div class="row btnrow">
+          <button class="primary" id="saveKey">Save key</button>
+          <button class="ghost" id="testKey">Test</button>
+          <div class="grow"></div>
+          <button class="ghost danger" id="clearKey">Remove key</button>
+        </div>
+        <div class="result" id="keyMsg" role="status" aria-live="polite"></div>
+        <p class="hint" id="keyWhere"></p>
+      </section>
+
+      <section class="panel" aria-labelledby="hYou">
+        <h4 id="hYou">You</h4>
+        <label for="myName">Your name at tables</label>
+        <input id="myName" maxlength="40" placeholder="Player">
+        <label>How your Kin is asked</label>
+        <label class="choice"><input type="radio" name="askStyle" value="chat"><span>In your chat (normal messages)<small>The game's questions and your Kin's answers show up in your chat with that Kin, and your Kin remembers the game.</small></span></label>
+        <label class="choice"><input type="radio" name="askStyle" value="quiet"><span>Quietly (needs a share code)<small>Uses the way Kindroid's Discord bot talks to Kins, so game questions stay out of your chat. Needs a subscription and the Kin's share code (on Characters).</small></span></label>
+        <p class="hint">Your data folder: <span id="dataFolder"></span></p>
+      </section>
+
+      <section class="panel" aria-labelledby="hRelay">
+        <h4 id="hRelay">Relay (tables with other people)</h4>
+        <p class="hint">Everyone at a table uses the same relay address. Solo and Kin play don't need one.</p>
+        <label for="relay">Relay address</label>
+        <div class="row"><input id="relay" class="grow" placeholder="https://your-relay.example.com/" spellcheck="false"><button class="primary" id="saveRelay">Save</button></div>
+        <div class="msg" id="relayMsg" role="status"></div>
+        <label class="choice pc-only"><input type="checkbox" id="ownRelay"><span>Run a relay on this device<small>For friends on your home network (or with port forwarding or a free tunnel, see the README). Give them the address below.</small></span></label>
+        <code class="share pc-only" id="ownRelayAddr" hidden></code>
+      </section>
+    </div>
+  </section>
+</main>
+<footer>Kin Relay 1.2.2 · made by tilok360 · play chips only · not made by or connected to Kindroid · original art · <a href="#welcome">Getting started</a></footer>
+<div class="dropcover" id="dropcover" aria-hidden="true"><div><img src="art/logo.svg" alt=""><strong>Add this game</strong><span>.gz from "Get its code" (also .tgz, .tar or .zip)</span></div></div>
+<dialog id="dlg" aria-labelledby="dlgH"><h2 id="dlgH"></h2><div id="dlgBody"></div><div class="row dlgbtns" id="dlgBtns"></div></dialog>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<dialog id="impDlg" class="wide" aria-labelledby="impH">
+  <h2 id="impH">Import characters</h2>
+  <p class="hint" id="impInfo"></p>
+  <div class="imptools"><button type="button" class="ghost" id="impAll">Select all</button><button type="button" class="ghost" id="impNone">Select none</button><button type="button" class="ghost" id="impNew">Only new</button>
+    <input id="impFind" type="search" placeholder="Search by name" aria-label="Search the list" autocomplete="off"><span class="hint" id="impCount"></span></div>
+  <div class="implist" id="impList" role="group" aria-label="Characters found in the file"></div>
+  <div class="msg" id="impMsg" role="status" aria-live="polite"></div>
+  <div class="row dlgbtns"><button type="button" class="ghost" id="impCancel">Cancel</button><button type="button" class="primary" id="impGo">Import</button></div>
+</dialog>
+<dialog id="expDlg" class="wide" aria-labelledby="expH">
+  <h2 id="expH">Export characters</h2>
+  <fieldset class="fmt"><legend>File type</legend>
+    <label class="radio"><input type="radio" name="expFmt" value="relay" checked> <span><b>Kin Relay file</b> <span class="hint">Everything Kin Relay keeps, with pictures. Import it into Kin Relay on another device.</span></span></label>
+    <label class="radio"><input type="radio" name="expFmt" value="studio"> <span><b>Kin Studio file</b> <span class="hint">The same Kins in Kin Studio's character format.</span></span></label>
+  </fieldset>
+  <div class="imptools"><button type="button" class="ghost" id="expAll">Select all</button><button type="button" class="ghost" id="expNone">Select none</button><span class="hint" id="expCount"></span></div>
+  <div class="implist" id="expList" role="group" aria-label="Characters to export"></div>
+  <p class="hint">The file holds AI IDs, profile text and pictures, so keep it private. It never holds your API key.</p>
+  <div class="msg" id="expMsg" role="status" aria-live="polite"></div>
+  <div class="row dlgbtns"><button type="button" class="ghost" id="expCancel">Cancel</button><button type="button" class="primary" id="expGo">Export</button></div>
+</dialog>
+<script src="chario.js"></script>
+<script>window.KR_VERSION="1.2.2"</script>
+<script src="nodelite.js"></script>
+<script src="lib-bundle.js"></script>
+<script src="kr-web.js"></script>
+<script src="lobby.js"></script>
+</body>
+</html>

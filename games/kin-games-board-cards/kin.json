@@ -1,0 +1,89 @@
+{
+  "kin": 1,
+  "name": "Kin Games: Board & Cards",
+  "purpose": "26 board, card and word games (chess, checkers, Go, cribbage, Hearts, Word Duel). Play free in Solo against the computer, or play your Kin (uses Kindroid credits). It remembers who won.",
+  "run": {
+    "entry": "node main.js",
+    "timeout": "1m"
+  },
+  "screens": [
+    {
+      "slot": "panel",
+      "entry": "screen/index.html",
+      "title": "Kin Games: Board & Cards"
+    }
+  ],
+  "actions": [
+    {
+      "name": "kin_board_record",
+      "description": "Use when the person asks how many games you have won or lost against them in Kin Games: Board & Cards (its board, card and word games).",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "by": [
+        "kin",
+        "user"
+      ]
+    },
+    {
+      "name": "board_game_over",
+      "description": "Records a game finished on the Kin Games: Board & Cards screen and tells the Kin how it went.",
+      "input": {
+        "type": "object",
+        "properties": {
+          "game": {
+            "type": "string",
+            "maxLength": 20
+          },
+          "result": {
+            "type": "string",
+            "enum": [
+              "you",
+              "kin",
+              "draw"
+            ]
+          },
+          "detail": {
+            "type": "string",
+            "maxLength": 300
+          },
+          "achievements": {
+            "type": "array",
+            "maxItems": 20,
+            "items": {
+              "type": "object",
+              "properties": {
+                "who": {
+                  "type": "string",
+                  "enum": [
+                    "you",
+                    "kin"
+                  ]
+                },
+                "name": {
+                  "type": "string",
+                  "maxLength": 40
+                }
+              }
+            }
+          },
+          "kin_id": {
+            "type": "string",
+            "maxLength": 80
+          }
+        },
+        "required": [
+          "game",
+          "result"
+        ]
+      },
+      "by": [
+        "user"
+      ]
+    }
+  ],
+  "grants": [
+    "kin:read"
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "kin": 1,
+  "name": "Kin Hold'em",
+  "purpose": "Texas Hold'em for play chips. Free Solo vs computer players runs on screen with no credits. Or host a table for up to 5 people, or seat your Kins (uses Kindroid credits).",
+  "triggers": [
+    {
+      "on": "inbound",
+      "via": "webhook",
+      "id": "table"
+    }
+  ],
+  "run": {
+    "entry": "node main.js",
+    "timeout": "5m"
+  },
+  "screens": [
+    {
+      "slot": "panel",
+      "entry": "screen/index.html",
+      "title": "Hold'em"
+    }
+  ],
+  "actions": [
+    {
+      "name": "wake",
+      "description": "Open Kin Hold'em and see how the poker table stands: hands, chips and whose turn it is. Use when the person wants to play poker or asks how the game is going.",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "by": [
+        "user",
+        "kin"
+      ],
+      "reply": true
+    }
+  ],
+  "grants": [
+    "kin:read",
+    "inbound:table",
+    "net:in.kinusercontent.com"
+  ]
+}
